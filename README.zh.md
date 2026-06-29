@@ -18,6 +18,8 @@ SDK** 与 **Microsoft Agent Framework** 构建。它在 *相同场景* 下做 **
 
 ## 架构
 
+![arch](./imgs/arch.png)
+
 ```mermaid
 flowchart TD
     UI["前端 (index.html)<br/>Tab A / B / C"] -->|HTTP / SSE| API["FastAPI (server.py)"]

@@ -19,6 +19,8 @@ Models used (via GitHub Copilot):
 
 ## Architecture
 
+![arch](./imgs/arch.png)
+
 ```mermaid
 flowchart TD
     UI["Frontend (index.html)<br/>Tab A / B / C"] -->|HTTP / SSE| API["FastAPI (server.py)"]
