@@ -7,13 +7,20 @@ visualizes the result in a single HTML + JS page.
 
 > Languages: English (this file) · [中文](README.zh.md)
 
-Models used (via GitHub Copilot):
+Models used (via GitHub Copilot). Pricing follows the **GitHub Copilot models table**
+(Credits per 1M tokens, `1 credit = $0.01`), with a single unified rate per model —
+no separate individual/enterprise pricing:
 
-| Tier  | Model           | Price (per 1K tokens) | Typical use |
-|-------|-----------------|-----------------------|-------------|
-| LARGE | `claude-opus-4.8`, `gpt-5.5` | $0.030 | Agents, codegen, multi-step reasoning |
-| MID   | `gpt-5.4-mini`  | $0.012 | Dialogue, summarization, extraction |
-| TINY  | `gpt-5-mini`    | $0.001 | Classification, keyword/rule matching |
+| Tier  | Model           | Credits per 1M (In / Out) | Typical use |
+|-------|-----------------|---------------------------|-------------|
+| LARGE | `gpt-5.5`       | `500` / `3000`            | Agents, codegen, multi-step reasoning |
+| LARGE | `claude-opus-4.8` | `500` / `2500`          | Agents, codegen, multi-step reasoning |
+| MID   | `gpt-5.4-mini`  | `75` / `450`              | Dialogue, summarization, extraction |
+| TINY  | `gpt-5-mini`    | `25` / `200`              | Classification, keyword/rule matching |
+
+Cost is computed directly from each model's input/output credit rates and converted to
+USD (`credits × $0.01`). The full model rate table lives in
+`backend/token_meter.py` (`MODEL_CREDITS_PER_1M`).
 
 ---
 
@@ -86,10 +93,10 @@ a high-end model. The routing tree (`backend/router.py`):
 
 ```
 INCOMING REQUEST
-  └─ Prompt < 500 tokens?  ── YES ─→ TINY  ($0.001/K)  classify · extract
-                           └─ NO ──→ multi-step reasoning?
-                                       ├─ NO  ─→ MID  ($0.012/K)  dialogue · summary
-                                       └─ YES ─→ LARGE ($0.030/K) agent · code
+        └─ Prompt < 500 tokens?  ── YES ─→ TINY   (classify · extract)
+                                                                                                         └─ NO ──→ multi-step reasoning?
+                                                                                                                                                         ├─ NO  ─→ MID   (dialogue · summary)
+                                                                                                                                                         └─ YES ─→ LARGE (agent · code)
 ```
 
 ### C. Coding scenario — multi-agent (Agent Framework)
@@ -130,7 +137,8 @@ ACTION HUB    ── throttle (>80% budget) · rollback (>budget)
 ```
 
 Tokens are counted with `tiktoken` (provider-independent), and cost is accrued per
-tier.
+tier. If the `cl100k_base` encoding cannot be fetched locally at startup, the app
+falls back to an approximate offline counter so the server can still boot.
 
 ---
 

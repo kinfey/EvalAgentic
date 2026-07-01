@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>淘宝式商品列表站点</title>
+  <title>淘宝风商品列表站</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; background: #f5f5f5; color: #333; font-family: Arial, "Microsoft YaHei", sans-serif; }
@@ -29,7 +29,7 @@
 <body>
   <header>
     <div class="wrap">
-      <h1>淘宝式商品列表站点</h1>
+      <h1>淘宝风商品列表站</h1>
       <p class="subhead">精选好货 · 图片、标题、价格、简介一屏展示</p>
     </div>
   </header>
@@ -58,7 +58,7 @@
       els.total.textContent = `共 ${goods.length} 件商品`;
       els.goods.innerHTML = goods.length ? goods.map((item) => `
         <article class="card">
-          <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}">
+          <img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.title)}">
           <div class="info">
             <div class="title">${escapeHtml(item.title)}</div>
             <div class="price">¥${Number(item.price).toFixed(2)}</div>

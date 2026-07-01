@@ -10,6 +10,9 @@
   header{padding:24px 32px;background:#0d1117;color:#fff}h1{margin:0;font-size:24px}.sub{color:#9aa4b2;font-size:14px;margin-top:6px}
   main{max-width:1180px;margin:0 auto;padding:24px}
   .tabs{display:flex;gap:8px;margin-bottom:18px}.tab{padding:10px 18px;border-radius:8px;background:#e3e8ef;cursor:pointer;font-weight:600}.tab.on{background:#0d1117;color:#fff}
+  .ctl{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px;align-items:end}
+  .ctl label{font-size:12px;color:var(--mut);display:block;margin-bottom:6px}
+  .ctl select,.ctl input{width:100%;border:1px solid #d6dbe2;border-radius:8px;padding:8px;background:#fff}
   .card{background:var(--card);border-radius:12px;padding:18px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
   textarea{width:100%;min-height:120px;border:1px solid #d6dbe2;border-radius:8px;padding:10px;font-size:13px;font-family:inherit}
   input{width:100%;border:1px solid #d6dbe2;border-radius:8px;padding:8px}
@@ -37,6 +40,10 @@
     <div class="tab" data-t="C">C 编码场景(多 Agent)</div>
   </div>
 
+  <div class="card">
+    <div class="small">计价方式(按 GitHub Copilot 模型价目表): 统一按各模型「每 1M tokens 消耗的 Credits」计费 · 1 credit = $0.01 · 输入/输出分别计价</div>
+  </div>
+
   <section id="A">
     <div class="card">
       <label class="small">原始长文本</label>
@@ -45,7 +52,7 @@
       <p><button id="runA">运行对比</button></p>
     </div>
     <div class="grid">
-      <div class="card b"><div class="lab">BEFORE 原始注入</div><div class="big" id="bA">–</div><div class="small">判断模型: Claude Opus 4.8 · LARGE $0.030/K</div><pre id="bAns"></pre></div>
+      <div class="card b"><div class="lab">BEFORE 原始注入</div><div class="big" id="bA">–</div><div class="small">判断模型: Claude Opus 4.8</div><pre id="bAns"></pre></div>
       <div class="card a"><div class="lab">AFTER 压缩注入</div><div class="big" id="aA">–</div><div class="small">抽取: GPT-5 mini · 判断: Claude Opus 4.8</div><pre id="aJson"></pre><pre id="aAns"></pre></div>
     </div>
     <div class="card save" id="saveA">节省: – </div>
@@ -53,7 +60,7 @@
 
   <section id="B" class="hide">
     <div class="card"><p class="small">同一批请求: 全部走 LARGE vs 路由树按需分配</p><button id="runB">运行对比</button></div>
-    <div class="card"><table id="tblB"><thead><tr><th>请求</th><th>BEFORE</th><th>AFTER</th><th>场景</th><th>原因</th></tr></thead><tbody></tbody></table></div>
+    <div class="card"><table id="tblB"><thead><tr><th>请求</th><th>Token区间</th><th>Token数</th><th>BEFORE</th><th>AFTER</th><th>场景</th><th>原因</th></tr></thead><tbody></tbody></table></div>
     <div class="grid">
       <div class="card b"><div class="lab">BEFORE 全 LARGE</div><div class="big" id="bB">–</div><div class="small">全部 GPT-5.5 (LARGE)</div></div>
       <div class="card a"><div class="lab">AFTER 按需路由</div><div class="big" id="aB">–</div><div class="small">TINY=GPT-5 mini · MID=GPT-5.4 mini · LARGE=GPT-5.5</div></div>
@@ -86,13 +93,17 @@ $('#runA').onclick=async()=>{$('#runA').disabled=true;$('#saveA').textContent='�
  const r=await fetch('/api/compression',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:$('#text').value,task:$('#task').value})}).then(r=>r.json());
  $('#bA').textContent=r.before.prompt_tokens+' tok';$('#bAns').textContent=r.before.answer;
  $('#aA').textContent=r.after.prompt_tokens+' tok';$('#aJson').textContent=r.after.compact;$('#aAns').textContent=r.after.answer;
- $('#saveA').textContent=`节省 ${r.saved_tokens} tokens (${r.saved_pct}%) · $${r.saved_cost}`;$('#runA').disabled=false;};
+ $('#saveA').textContent=`节省 ${r.saved_tokens} tokens (${r.saved_pct}%) · 输入侧约省 $${r.saved_cost} · 总成本省 $${r.cost.saved_usd} (${r.cost.saved_credits} credits)`;$('#runA').disabled=false;};
 $('#runB').onclick=async()=>{$('#runB').disabled=true;$('#saveB').textContent='运行中…';
- const ps=["把这条评论分类为正面/负面：物流很快，包装完好","请逐步推理并写出代码：实现快排并分析复杂度","张三毕业于清华，主修AI方向，获国家奖学金，请扩写一段300字的个人简介用于求职"];
+ const shortReq="把这条评论分类为正面/负面：物流很快，包装完好";
+ const longParagraph="这是一段用于拉长上下文并保持语义一致的补充说明，包含背景、约束、边界条件、示例与反例，要求模型综合考虑表达风格、结构完整性、可执行性、潜在风险、替代方案、权衡依据以及结果验证方法，最后以可操作步骤输出。";
+ const longReq=`请你阅读以下需求并给出完整方案：\n${Array(80).fill(longParagraph).join('\n')}\n最后请输出详细执行计划与注意事项。`;
+ const ps=[shortReq,longReq];
  const r=await fetch('/api/routing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompts:ps})}).then(r=>r.json());
- $('#tblB tbody').innerHTML=r.rows.map(x=>`<tr><td>${x.prompt}</td><td><span class="pill LARGE">GPT-5.5</span></td><td><span class="pill ${x.after_tier}">${x.route.model}</span></td><td>${x.route.scenario}</td><td>${x.route.reason}</td></tr>`).join('');
+ $('#tblB tbody').innerHTML=r.rows.map(x=>{const tk=x.route.tokens||0;const bucket=tk>500?'> 500':'< 500';
+  return `<tr><td>${x.prompt}</td><td>${bucket}</td><td>${tk}</td><td><span class="pill LARGE">GPT-5.5</span></td><td><span class="pill ${x.after_tier}">${x.route.model}</span></td><td>${x.route.scenario}</td><td>${x.route.reason}</td></tr>`;}).join('');
  $('#bB').textContent='$'+r.before.total_cost_usd;$('#aB').textContent='$'+r.after.total_cost_usd;
- $('#saveB').textContent=`节省 $${r.saved_cost}`;$('#runB').disabled=false;};
+ $('#saveB').textContent=`使用成本节省 $${r.cost.saved_usd} (${r.cost.saved_credits} credits)`;$('#runB').disabled=false;};
 $('#runC').onclick=async()=>{$('#runC').disabled=true;$('#cStatus').textContent='多 Agent 运行中…';
  const log=$('#cLog');log.innerHTML='';
  const ph={start:['be af',(e)=>`▶ [${e.mode==='before'?'BEFORE':'AFTER '}] ${e.agent} 启动 · 模型 ${e.model} (${e.tier})`],
@@ -108,6 +119,7 @@ $('#runC').onclick=async()=>{$('#runC').disabled=true;$('#cStatus').textContent=
   let i;while((i=buf.indexOf('\n\n'))>=0){const line=buf.slice(0,i).trim();buf=buf.slice(i+2);
    if(!line.startsWith('data:'))continue;const e=JSON.parse(line.slice(5).trim());
    if(e.type==='mode'){add('be af',`══ ${e.mode==='before'?'BEFORE 处理前(全 GPT-5.5, 部署 '+e.port:'AFTER 处理后(压缩+按需路由, 部署 '+e.port})══`);}
+   else if(e.type==='cleanup'){add('hl',`🧹 清理(${e.phase==='containers'?'容器':'旧代码'}): ${e.message}`);}
    else if(e.type==='spec'){if(e.mode==='after')$('#cSpec').textContent=e.spec;}
    else if(e.type==='step'){const p=ph[e.phase];if(p)add(p[0],p[1](e));}
    else if(e.type==='error'){add('be',`✗ 错误: ${e.message}`);$('#cStatus').textContent='出错';}
@@ -121,7 +133,7 @@ function renderC(r){$('#cSpec').textContent=r.after.spec;
  $('#cBt').textContent='$'+r.before.total_cost;$('#cBc').textContent=r.before.total_tokens+' tok · 自愈 '+r.before.healed_count;
  $('#cAt').textContent='$'+r.after.total_cost;$('#cAc').textContent=r.after.total_tokens+' tok · 自愈 '+r.after.healed_count;
  const tokTxt=r.saved_tokens>=0?`节省 ${r.saved_tokens} tok`:`token +${Math.abs(r.saved_tokens)}(小模型输出更详)`;
- $('#saveC').textContent=`整体省钱 $${r.saved_cost} (${r.saved_cost_pct}%) · ${tokTxt} · 按需调用以 30× 价差降本`;
+ $('#saveC').textContent=`整体省钱 $${r.saved_cost} (${r.saved_cost_pct}%) · ${tokTxt} · 折合省 ${r.cost.saved_credits} credits`;
  $('#cDeploy').innerHTML=`BEFORE → <a href="${r.deploy.before_url}" target="_blank">${r.deploy.before_url}</a> · AFTER → <a href="${r.deploy.after_url}" target="_blank">${r.deploy.after_url}</a><br>一键部署: <code>${r.deploy.cmd}</code> (生成 ${r.deploy.compose})`;}
 </script>
 </body>

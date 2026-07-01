@@ -15,15 +15,23 @@
 import json
 import os
 import re
+import shutil
 import time
 import asyncio
 
 from agent_framework_github_copilot import GitHubCopilotAgent, GitHubCopilotOptions
 from copilot.session import PermissionHandler
 
-from token_meter import count_tokens, PRICE
+from token_meter import (
+    compare_cost,
+    count_tokens,
+    estimate_cost_usd,
+)
 
 GEN = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "generated"))
+COMPOSE_FILE = os.path.join(GEN, "docker-compose.yml")
+# 每次运行前需清理的生成物 (目录或文件)
+GEN_ARTIFACTS = ("before", "after", "docker-compose.yml", "deploy.sh")
 
 # 每个 Agent 的角色与按需路由 (BEFORE 全 LARGE; AFTER 按复杂度分配)
 ROLES = {
@@ -42,6 +50,68 @@ BEFORE_MODEL = "gpt-5.5"
 async def _emit(emit, ev: dict):
     if emit is not None:
         await emit(ev)
+
+
+async def _sh(*args: str) -> tuple[int, str]:
+    """运行命令, 返回 (returncode, 合并输出)。不抛异常。"""
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+        out, _ = await proc.communicate()
+        return proc.returncode, (out or b"").decode(errors="ignore")
+    except FileNotFoundError:
+        return 127, "command not found"
+    except Exception as ex:  # noqa: BLE001
+        return 1, str(ex)
+
+
+async def _docker_available() -> bool:
+    rc, _ = await _sh("docker", "version", "--format", "{{.Server.Version}}")
+    return rc == 0
+
+
+async def cleanup_previous(emit=None):
+    """Tab C 启动前: 若项目容器之前已建立则先删除, 再删除之前生成的代码。"""
+    # 1) 检查并删除之前建立的容器
+    if await _docker_available():
+        existing: list[str] = []
+        if os.path.exists(COMPOSE_FILE):
+            rc, out = await _sh("docker", "compose", "-f", COMPOSE_FILE, "ps", "-aq")
+            if rc == 0 and out.strip():
+                existing += out.split()
+        rc2, out2 = await _sh("docker", "ps", "-aq",
+                              "--filter", "name=taobao-before", "--filter", "name=taobao-after")
+        if rc2 == 0 and out2.strip():
+            existing += out2.split()
+        ids = list(dict.fromkeys(existing))
+        if ids:
+            await _emit(emit, {"type": "cleanup", "phase": "containers",
+                               "message": f"检测到 {len(ids)} 个旧容器, 正在删除…"})
+            if os.path.exists(COMPOSE_FILE):
+                await _sh("docker", "compose", "-f", COMPOSE_FILE, "down", "--remove-orphans", "-v")
+            await _sh("docker", "rm", "-f", *ids)
+            await _emit(emit, {"type": "cleanup", "phase": "containers", "message": "旧容器已删除"})
+        else:
+            await _emit(emit, {"type": "cleanup", "phase": "containers", "message": "未检测到旧容器"})
+    else:
+        await _emit(emit, {"type": "cleanup", "phase": "containers",
+                           "message": "未检测到 Docker, 跳过容器删除"})
+
+    # 2) 删除之前生成的代码
+    removed: list[str] = []
+    for name in GEN_ARTIFACTS:
+        p = os.path.join(GEN, name)
+        if os.path.isdir(p):
+            shutil.rmtree(p, ignore_errors=True)
+            removed.append(name)
+        elif os.path.isfile(p):
+            os.remove(p)
+            removed.append(name)
+    if removed:
+        await _emit(emit, {"type": "cleanup", "phase": "code",
+                           "message": f"已清理旧生成代码: {', '.join(removed)}"})
+    else:
+        await _emit(emit, {"type": "cleanup", "phase": "code", "message": "无旧生成代码"})
 
 
 # 可重试的瞬态错误 (会话/授权/限流/超时)
@@ -121,7 +191,7 @@ async def run_role(role_key: str, mode: str, ctx: dict, emit=None) -> dict:
     result = {
         "role": role["name"], "model": model, "tier": tier,
         "prompt_tokens": pt, "completion_tokens": ct, "total_tokens": pt + ct,
-        "cost_usd": round((pt + ct) / 1000 * PRICE[tier], 6),
+        "cost_usd": round(estimate_cost_usd(pt, ct, model, tier), 6),
         "latency_ms": lat, "healed": healed, "review": note, "text": text,
     }
     await _emit(emit, {"type": "step", "mode": mode, "agent": role["name"], "phase": "done",
@@ -251,6 +321,7 @@ async def run_pipeline(mode: str, user_req: str, port: int, emit=None) -> dict:
 
 
 async def run_coding_eval(user_req: str, emit=None) -> dict:
+    await cleanup_previous(emit)
     before = await run_pipeline("before", user_req, 8081, emit)
     after = await run_pipeline("after", user_req, 8082, emit)
     write_deploy_assets()
@@ -262,6 +333,7 @@ async def run_coding_eval(user_req: str, emit=None) -> dict:
         "saved_pct": round(saved_tok / before["total_tokens"] * 100, 1) if before["total_tokens"] else 0,
         "saved_cost": saved_cost,
         "saved_cost_pct": round(saved_cost / before["total_cost"] * 100, 1) if before["total_cost"] else 0,
+        "cost": compare_cost(before["total_cost"], after["total_cost"]),
         "deploy": {"before_url": "http://localhost:18081", "after_url": "http://localhost:18082",
                    "cmd": "cd generated && ./deploy.sh", "compose": "generated/docker-compose.yml"},
     }
