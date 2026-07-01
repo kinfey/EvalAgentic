@@ -1,4 +1,4 @@
-"""压缩: 识别冗余 -> Copilot 结构化抽取为 JSON -> 动态注入 -> 24h 缓存复用."""
+"""Compression: detect redundancy -> extract JSON -> dynamic injection -> 24h cache reuse."""
 import hashlib
 import json
 import time
@@ -9,8 +9,8 @@ _CACHE: dict[str, tuple[float, dict]] = {}
 TTL = 24 * 3600
 
 EXTRACT_SYS = (
-    "你是结构化抽取器。把长尾自然语言压缩成最小 JSON, 丢掉所有修饰语。"
-    "只输出 JSON, 不要解释。字段精炼: name, degree, school, major, year, achievements。"
+    "You are a structured extractor. Compress long-tail natural language into minimal JSON and remove filler wording. "
+    "Output JSON only with no explanation. Keep fields concise: name, degree, school, major, year, achievements."
 )
 
 
@@ -23,9 +23,9 @@ async def compress(text: str, fields: list[str] | None = None) -> dict:
     hit = _CACHE.get(k)
     if hit and time.time() - hit[0] < TTL:
         return {**hit[1], "cached": True}
-    prompt = f"把下面文本压缩为 JSON:\n{text}"
+    prompt = f"Compress the text below into JSON:\n{text}"
     if fields:
-        prompt += f"\n只保留字段: {fields}"
+        prompt += f"\nKeep only these fields: {fields}"
     raw, _ = await gh_models.ask(prompt, gh_models.TINY, system=EXTRACT_SYS)
     s, e = raw.find("{"), raw.rfind("}")
     try:

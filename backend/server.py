@@ -18,7 +18,7 @@ app = FastAPI(title="EvalAgentic")
 
 class CompressReq(BaseModel):
     text: str
-    task: str = "用一句话总结此人核心资历。"
+    task: str = "Summarize this person's core qualifications in one sentence."
     model: str = gh_models.LARGE_OPUS
 
 
@@ -29,8 +29,8 @@ class RouteReq(BaseModel):
 
 class CodingReq(BaseModel):
     requirement: str = (
-        "用 Python 做一个类似淘宝的网站, 只需要货物列表, 前端用 HTML+JS, "
-        "后端用 Flask, 最后部署到 Docker 上。"
+        "Build a Taobao-like goods listing website using Python. "
+        "Use HTML+JS for the frontend, Flask for the backend, and deploy it with Docker."
     )
 
 
@@ -51,7 +51,7 @@ async def coding(r: CodingReq):
 
 @app.post("/api/coding/stream")
 async def coding_stream(r: CodingReq):
-    """SSE: 逐个 Agent 执行步骤实时推送到前端。"""
+    """SSE: stream per-agent execution steps to the frontend in real time."""
     q: asyncio.Queue = asyncio.Queue()
 
     async def emit(ev: dict):

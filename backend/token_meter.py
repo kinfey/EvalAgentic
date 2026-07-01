@@ -1,4 +1,4 @@
-"""Token 计数器架构: INTERCEPTOR(@token_meter 装饰器) -> COUNTER CORE(记账/阈值/触发) -> ACTION HUB.
+"""Token counter architecture: INTERCEPTOR (@token_meter decorator) -> COUNTER CORE (accounting/threshold/trigger) -> ACTION HUB.
 
 Non-invasive: decorate any LLM call. Counts tokens with tiktoken, accrues cost,
 evaluates a budget, and emits throttle/downgrade/rollback actions.
@@ -39,17 +39,16 @@ MODEL_CREDITS_PER_1M = {
     "gemini-3-flash": {"input": 50, "output": 300},
     "gemini-3.1-pro": {"input": 200, "output": 1200},
     "gemini-3.5-flash": {"input": 150, "output": 900},
-    "gpt-5-mini": {"input": 25, "output": 200},
     "gpt-5.3-codex": {"input": 175, "output": 1400},
     "gpt-5.4": {"input": 250, "output": 1500},
     "gpt-5.4-mini": {"input": 75, "output": 450},
     "gpt-5.5": {"input": 500, "output": 3000},
-    "mai-code-1-flash": {"input": 75, "output": 450},
+    "mai-code-1-flash-picker": {"input": 75, "output": 450},
 }
 
 # Fallback rates when a model name is unknown, keyed by routing tier.
 TIER_FALLBACK_CREDITS_PER_1M = {
-    "TINY": MODEL_CREDITS_PER_1M["gpt-5-mini"],
+    "TINY": MODEL_CREDITS_PER_1M["mai-code-1-flash-picker"],
     "MID": MODEL_CREDITS_PER_1M["gpt-5.4-mini"],
     "LARGE": MODEL_CREDITS_PER_1M["gpt-5.5"],
 }
@@ -158,7 +157,7 @@ def count_tokens(text: str) -> int:
 
 @dataclass
 class CounterCore:
-    """计数核心: 记账 -> 阈值评估 -> 触发动作 (内存; 可扩展 Redis 双写)."""
+    """Counter core: accounting -> threshold evaluation -> action triggering (in-memory; can be extended to Redis)."""
     budget: int = 1_000_000
     total_prompt: int = 0
     total_completion: int = 0
@@ -195,7 +194,7 @@ class CounterCore:
 
 
 def token_meter(core: CounterCore, label: str, model: str, tier: str):
-    """装饰器: 挂在每个 LLM 调用上, ask(prompt, model)->(text,latency)."""
+    """Decorator: wrap each LLM call, ask(prompt, model) -> (text, latency)."""
     def deco(fn):
         @functools.wraps(fn)
         async def wrap(prompt, *a, **kw):

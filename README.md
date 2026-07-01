@@ -5,7 +5,7 @@ applications, built on the **GitHub Copilot Python SDK** and the **Microsoft Age
 Framework**. It compares the *same scenario* **before vs. after** optimization and
 visualizes the result in a single HTML + JS page.
 
-> Languages: English (this file) · [中文](README.zh.md)
+> Languages: English (this file) · [English Mirror](README.zh.md)
 
 Models used (via GitHub Copilot). Pricing follows the **GitHub Copilot models table**
 (Credits per 1M tokens, `1 credit = $0.01`), with a single unified rate per model —
@@ -16,7 +16,7 @@ no separate individual/enterprise pricing:
 | LARGE | `gpt-5.5`       | `500` / `3000`            | Agents, codegen, multi-step reasoning |
 | LARGE | `claude-opus-4.8` | `500` / `2500`          | Agents, codegen, multi-step reasoning |
 | MID   | `gpt-5.4-mini`  | `75` / `450`              | Dialogue, summarization, extraction |
-| TINY  | `gpt-5-mini`    | `25` / `200`              | Classification, keyword/rule matching |
+| TINY  | `mai-code-1-flash` | `75` / `450`           | Classification, keyword/rule matching |
 
 Cost is computed directly from each model's input/output credit rates and converted to
 USD (`credits × $0.01`). The full model rate table lives in
@@ -55,7 +55,7 @@ flowchart TD
     AF --> MODELS
     MODELS --> M1["LARGE: claude-opus-4.8 / gpt-5.5"]
     MODELS --> M2["MID: gpt-5.4-mini"]
-    MODELS --> M3["TINY: gpt-5-mini"]
+    MODELS --> M3["TINY: mai-code-1-flash"]
 ```
 
 | Layer | Component | Responsibility |
@@ -80,11 +80,11 @@ Long-tail natural-language text (résumés, product manuals, contracts) is:
 4. **Cache reuse** — identical entities reuse the structured result for 24h.
 
 ```
-"张三于 2018 年 9 月就读于清华大学计算机科学与技术系……(2,500 words)"
+"Alex Chen enrolled in September 2018 in the Computer Science program at Tsinghua University...(2,500 words)"
    ↓ compress
-{ "name": "张三", "degree": "本科", "school": "清华大学",
-  "major": "计算机·AI 方向", "year": 2022,
-  "achievements": ["国家奖学金", "ACM 亚洲区铜牌"] }
+{ "name": "Alex Chen", "degree": "Bachelor", "school": "Tsinghua University",
+  "major": "Computer Science (AI Track)", "year": 2022,
+  "achievements": ["National Scholarship", "ACM Asia Regional Bronze"] }
 ```
 
 ### B. On-demand model routing
@@ -104,12 +104,12 @@ The same deliverable (a Taobao-like **goods-list site**: HTML + JS frontend, Fla
 backend, Dockerized) is produced twice by a 4-agent pipeline:
 
 ```
-需求分析 → 编程 → 测试 → 部署(Docker)
+Requirements → Coding → Testing → Deployment (Docker)
 Requirements → Coding → Testing → Deployment
 ```
 
-- **BEFORE** (处理前): no compression, every agent uses GPT-5.5 (LARGE) → deploys to port **8081**
-- **AFTER** (处理后): compressed JSON spec injection + on-demand routing
+- **BEFORE**: no compression, every agent uses GPT-5.5 (LARGE) → deploys to port **8081**
+- **AFTER**: compressed JSON spec injection + on-demand routing
   (requirements=MID, coding=LARGE, testing=MID, deploy=TINY) → deploys to port **8082**
 
 Each agent is **token-metered**, runs a **review + self-heal** step, and streams its

@@ -1,7 +1,7 @@
-"""评估编排: 同场景下做 处理前/处理后 对比.
+"""Evaluation orchestration: before/after comparisons on the same scenario.
 
-A. 压缩对比: raw prompt 直送 LARGE  vs  压缩为 JSON 注入后送 LARGE
-B. 按需调用: 全部走 LARGE       vs  路由树按需分配 (TINY/MID/LARGE)
+A. Compression comparison: raw prompt to LARGE vs compact JSON injection to LARGE.
+B. On-demand routing: all LARGE vs routing tree assignment (TINY/MID/LARGE).
 """
 from token_meter import (
     CounterCore,
@@ -19,19 +19,20 @@ async def eval_compression(text: str, task: str, large_model: str):
     """A: same scenario, before(raw->LARGE) vs after(compress->inject->LARGE)."""
     core = CounterCore()
 
-    before = token_meter(core, "BEFORE 原始注入", large_model, "LARGE")(gh_models.ask)
-    before_prompt = f"{task}\n背景:\n{text}"
+    before = token_meter(core, "BEFORE Raw Injection", large_model, "LARGE")(gh_models.ask)
+    before_prompt = f"{task}\nContext:\n{text}"
     b_text, b_lat = await before(before_prompt, large_model)
 
     comp = await compressor.compress(text)
-    after = token_meter(core, "AFTER 压缩注入", large_model, "LARGE")(gh_models.ask)
-    after_prompt = f"{task}\n背景(JSON):{comp['compact']}"
+    after = token_meter(core, "AFTER Compressed Injection", large_model, "LARGE")(gh_models.ask)
+    after_prompt = f"{task}\nContext(JSON):{comp['compact']}"
     a_text, a_lat = await after(after_prompt, large_model)
 
     snap = core.snapshot()
     bt = count_tokens(before_prompt)
     at = count_tokens(after_prompt)
-    # 成本节省按"输入 token 差"计 (压缩只作用于输入; 输出长度非确定, 不计入对比)
+    # Savings are computed from input token delta only.
+    # Compression directly affects input size; output length is variable and excluded.
     saved_cost = round(
         estimate_input_cost_usd(max(0, bt - at), large_model, "LARGE"),
         6,
@@ -50,7 +51,7 @@ async def eval_compression(text: str, task: str, large_model: str):
 
 
 async def eval_routing(prompts: list[str], large_model: str):
-    """B: same prompts, before(全 LARGE) vs after(按需路由)."""
+    """B: same prompts, before (all LARGE) vs after (on-demand routing)."""
     before_core, after_core = CounterCore(), CounterCore()
     rows = []
     for p in prompts:

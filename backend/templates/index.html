@@ -1,52 +1,125 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>淘宝风商品列表站</title>
+  <title>Taobao-like Goods Listing Website</title>
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; background: #f5f5f5; color: #333; font-family: Arial, "Microsoft YaHei", sans-serif; }
+    body { margin: 0; background: #f5f5f5; color: #333; font-family: Arial, Helvetica, sans-serif; }
+    a { color: inherit; text-decoration: none; }
+    .topbar { background: #f2f2f2; border-bottom: 1px solid #ddd; color: #666; font-size: 13px; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+    .topbar .wrap { display: flex; justify-content: space-between; padding-top: 8px; padding-bottom: 8px; }
     header { background: linear-gradient(90deg, #ff5000, #ff8a00); color: #fff; }
-    .wrap { max-width: 1180px; margin: 0 auto; padding: 18px 16px; }
-    h1 { margin: 0 0 14px; font-size: 28px; }
-    .subhead { margin: 0; opacity: .9; }
-    main { max-width: 1180px; margin: 0 auto; padding: 22px 16px 40px; }
-    .summary { display: flex; justify-content: space-between; margin-bottom: 14px; color: #666; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
-    .card { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.08); transition: .2s; }
-    .card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
-    .card img { width: 100%; height: 190px; object-fit: cover; display: block; background: #fff2e8; }
-    .info { padding: 14px; }
-    .title { min-height: 44px; line-height: 1.45; font-weight: 700; }
-    .price { margin: 10px 0; color: #ff5000; font-size: 24px; font-weight: 800; }
-    .desc { margin: 0; color: #777; line-height: 1.6; font-size: 13px; }
-    .pager { display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 24px; }
-    .empty { grid-column: 1 / -1; padding: 44px; text-align: center; color: #888; background: #fff; border-radius: 14px; }
-    @media (max-width: 640px) { .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } .card img { height: 130px; } }
+    .hero { display: grid; grid-template-columns: 190px 1fr 150px; gap: 18px; align-items: center; padding: 24px 16px; }
+    .logo { font-size: 30px; font-weight: 900; letter-spacing: -.5px; }
+    .search { display: flex; background: #fff; border: 3px solid #fff; border-radius: 999px; overflow: hidden; box-shadow: 0 8px 18px rgba(128, 45, 0, .18); }
+    .search input { flex: 1; border: 0; padding: 13px 18px; font-size: 16px; outline: 0; }
+    .search button, .load-more, .back-btn { border: 0; background: #ff5000; color: #fff; padding: 0 28px; font-size: 16px; font-weight: 700; cursor: pointer; }
+    .port { text-align: right; opacity: .9; font-size: 13px; }
+    main { max-width: 1200px; margin: 18px auto 42px; padding: 0 16px; display: grid; grid-template-columns: 180px 1fr; gap: 18px; }
+    aside, .toolbar, .card, .detail { background: #fff; border-radius: 14px; box-shadow: 0 2px 10px rgba(0, 0, 0, .06); }
+    aside { padding: 14px; align-self: start; }
+    aside h3 { margin: 0 0 12px; font-size: 16px; }
+    .cat { display: block; width: 100%; border: 0; background: transparent; border-radius: 9px; padding: 10px; text-align: left; cursor: pointer; }
+    .cat:hover, .cat.on { background: #fff1e8; color: #ff5000; font-weight: 700; }
+    .toolbar { margin-bottom: 14px; padding: 12px 14px; display: flex; justify-content: space-between; gap: 12px; align-items: center; color: #666; }
+    .toolbar select { border: 1px solid #ddd; border-radius: 999px; padding: 8px 12px; background: #fff; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+    .card { overflow: hidden; transition: transform .18s ease, box-shadow .18s ease; }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 10px 28px rgba(255, 80, 0, .16); }
+    .thumb { position: relative; background: #fff6f0; }
+    .thumb img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
+    .badge { position: absolute; left: 10px; top: 10px; background: linear-gradient(90deg, #ff5000, #ff8a00); color: #fff; border-radius: 999px; padding: 4px 8px; font-size: 12px; }
+    .info { padding: 12px; }
+    .title { height: 42px; line-height: 1.35; font-size: 15px; font-weight: 700; overflow: hidden; }
+    .price-row { margin-top: 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+    .price { color: #ff5000; font-size: 24px; font-weight: 900; }
+    .price small { font-size: 13px; }
+    .sold { color: #999; font-size: 12px; white-space: nowrap; }
+    .meta { margin-top: 10px; display: flex; justify-content: space-between; color: #777; font-size: 12px; }
+    .tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag { color: #ff5000; border: 1px solid #ffd7c2; background: #fff7f2; border-radius: 4px; padding: 2px 5px; font-size: 12px; }
+    .empty { grid-column: 1 / -1; padding: 54px; text-align: center; color: #888; background: #fff; border-radius: 14px; }
+    .pager { margin-top: 18px; text-align: center; }
+    .load-more { min-width: 180px; border-radius: 999px; height: 42px; }
+    .load-more[disabled] { background: #ccc; cursor: not-allowed; }
+    .detail { display: none; padding: 20px; }
+    .detail.on { display: grid; grid-template-columns: minmax(260px, 430px) 1fr; gap: 24px; }
+    .detail img { width: 100%; border-radius: 14px; background: #fff6f0; }
+    .detail h1 { margin: 0 0 12px; font-size: 28px; }
+    .detail .desc { color: #555; line-height: 1.7; }
+    .detail .back-btn { margin-top: 22px; border-radius: 999px; height: 42px; }
+    @media (max-width: 760px) {
+      .hero { grid-template-columns: 1fr; }
+      .port { text-align: left; }
+      main, .detail.on { grid-template-columns: 1fr; }
+      aside { display: flex; gap: 8px; overflow-x: auto; }
+      aside h3 { display: none; }
+      .cat { white-space: nowrap; }
+      .toolbar { align-items: flex-start; flex-direction: column; }
+    }
   </style>
 </head>
 <body>
-  <header>
+  <div class="topbar">
     <div class="wrap">
-      <h1>淘宝风商品列表站</h1>
-      <p class="subhead">精选好货 · 图片、标题、价格、简介一屏展示</p>
+      <span>Welcome to TaoLite</span>
+      <span>Cart · Favorites · Seller Center</span>
+    </div>
+  </div>
+
+  <header>
+    <div class="wrap hero">
+      <a class="logo" href="/">TaoLite</a>
+      <form class="search" id="searchForm">
+        <input id="keyword" name="q" type="search" placeholder="Search goods, descriptions, shops">
+        <button type="submit">Search</button>
+      </form>
+      <div class="port">Flask · Port {{ port }}</div>
     </div>
   </header>
 
   <main>
-    <div class="summary">
-      <span id="total">加载中...</span>
-      <span>HTTP 拉取 /api/goods</span>
-    </div>
-    <section id="goods" class="grid"></section>
+    <aside id="categoryPanel">
+      <h3>Categories</h3>
+      <button class="cat on" data-category="">All goods</button>
+    </aside>
+
+    <section>
+      <div id="listingView">
+        <div class="toolbar">
+          <span id="summary">Loading goods...</span>
+          <select id="sort">
+            <option value="recommended">Recommended</option>
+            <option value="sales_desc">Best selling</option>
+            <option value="price_asc">Price low to high</option>
+            <option value="price_desc">Price high to low</option>
+            <option value="newest">Newest arrivals</option>
+          </select>
+        </div>
+        <div id="goods" class="grid"></div>
+        <div class="pager">
+          <button id="loadMore" class="load-more" type="button">Load more</button>
+        </div>
+      </div>
+
+      <article id="detailView" class="detail"></article>
+    </section>
   </main>
 
   <script>
-    const els = {
-      goods: document.querySelector("#goods"),
-      total: document.querySelector("#total"),
-    };
+    const goodsEl = document.querySelector("#goods");
+    const summaryEl = document.querySelector("#summary");
+    const keywordEl = document.querySelector("#keyword");
+    const sortEl = document.querySelector("#sort");
+    const categoryPanel = document.querySelector("#categoryPanel");
+    const listingView = document.querySelector("#listingView");
+    const detailView = document.querySelector("#detailView");
+    const loadMoreBtn = document.querySelector("#loadMore");
+    const initialDetailId = {{ detail_id|tojson }};
+    const state = { category: "", page: 1, perPage: 8, loading: false, hasNext: false };
 
     function escapeHtml(value) {
       return String(value).replace(/[&<>"']/g, (char) => ({
@@ -54,31 +127,166 @@
       }[char]));
     }
 
-    function render(goods) {
-      els.total.textContent = `共 ${goods.length} 件商品`;
-      els.goods.innerHTML = goods.length ? goods.map((item) => `
-        <article class="card">
-          <img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.title)}">
-          <div class="info">
-            <div class="title">${escapeHtml(item.title)}</div>
-            <div class="price">¥${Number(item.price).toFixed(2)}</div>
-            <p class="desc">${escapeHtml(item.description)}</p>
-          </div>
-        </article>
-      `).join("") : '<div class="empty">暂无商品</div>';
+    function money(value) {
+      return Number(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    async function loadGoods() {
-      els.goods.innerHTML = '<div class="empty">正在加载商品...</div>';
-      const resp = await fetch("/api/goods");
+    function card(item) {
+      return `
+        <a class="card" href="/goods/${item.id}" data-good-id="${item.id}">
+          <div class="thumb">
+            <img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.name)}" loading="lazy">
+            <span class="badge">${escapeHtml(item.category)}</span>
+          </div>
+          <div class="info">
+            <div class="title">${escapeHtml(item.name)}</div>
+            <div class="price-row">
+              <div class="price"><small>¥</small>${money(item.price)}</div>
+              <div class="sold">${Number(item.sales_count).toLocaleString()} sold</div>
+            </div>
+            <div class="meta">
+              <span>${escapeHtml(item.shop)}</span>
+              <span>${escapeHtml(item.location)}</span>
+            </div>
+            <div class="tags">${item.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>
+          </div>
+        </a>
+      `;
+    }
+
+    function updatePager(pagination) {
+      state.hasNext = Boolean(pagination.has_next);
+      summaryEl.textContent = `${pagination.total} goods found · page ${pagination.page} of ${Math.max(pagination.pages, 1)}`;
+      loadMoreBtn.hidden = pagination.total === 0;
+      loadMoreBtn.disabled = !state.hasNext;
+      loadMoreBtn.textContent = state.hasNext ? "Load more" : "No more goods";
+    }
+
+    async function loadCategories() {
+      const resp = await fetch("/api/categories");
       const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Failed to load categories");
+      categoryPanel.insertAdjacentHTML(
+        "beforeend",
+        data.categories.map((category) => `<button class="cat" data-category="${escapeHtml(category)}">${escapeHtml(category)}</button>`).join("")
+      );
+    }
+
+    async function loadGoods({ reset = true } = {}) {
+      if (state.loading) return;
+      state.loading = true;
+      if (reset) {
+        state.page = 1;
+        goodsEl.innerHTML = `<div class="empty">Loading goods...</div>`;
+      }
+
+      const params = new URLSearchParams({
+        q: keywordEl.value.trim(),
+        category: state.category,
+        sort: sortEl.value,
+        page: state.page,
+        per_page: state.perPage,
+      });
+      const resp = await fetch(`/api/goods?${params}`);
+      const data = await resp.json();
+      state.loading = false;
+
       if (!resp.ok) {
-        els.goods.innerHTML = `<div class="empty">${escapeHtml(data.error || "加载失败")}</div>`;
+        goodsEl.innerHTML = `<div class="empty">${escapeHtml(data.error || "Failed to load goods")}</div>`;
         return;
       }
-      render(data.goods || []);
+
+      const html = data.goods.length ? data.goods.map(card).join("") : `<div class="empty">No matching goods. Try another keyword or category.</div>`;
+      goodsEl.innerHTML = reset ? html : goodsEl.innerHTML + html;
+      updatePager(data.pagination);
     }
-    loadGoods();
+
+    async function showDetail(id, push = true) {
+      const resp = await fetch(`/api/goods/${id}`);
+      const item = await resp.json();
+      if (!resp.ok) {
+        detailView.innerHTML = `<div class="empty">${escapeHtml(item.error || "Good not found")}</div>`;
+      } else {
+        detailView.innerHTML = `
+          <img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.name)}">
+          <div>
+            <span class="tag">${escapeHtml(item.category)}</span>
+            <h1>${escapeHtml(item.name)}</h1>
+            <div class="price-row">
+              <div class="price"><small>¥</small>${money(item.price)}</div>
+              <div class="sold">${Number(item.sales_count).toLocaleString()} sold</div>
+            </div>
+            <p class="desc">${escapeHtml(item.description)}</p>
+            <div class="meta">
+              <span>${escapeHtml(item.shop)}</span>
+              <span>${escapeHtml(item.location)}</span>
+              <span>Listed ${new Date(item.created_at).toLocaleDateString()}</span>
+            </div>
+            <div class="tags">${item.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>
+            <button class="back-btn" type="button" id="backToList">Back to listing</button>
+          </div>
+        `;
+      }
+
+      listingView.hidden = true;
+      detailView.classList.add("on");
+      if (push) history.pushState({ id }, "", `/goods/${id}`);
+    }
+
+    function showListing(push = true) {
+      detailView.classList.remove("on");
+      listingView.hidden = false;
+      if (push) history.pushState({}, "", "/");
+    }
+
+    document.querySelector("#searchForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      showListing(false);
+      loadGoods();
+    });
+
+    sortEl.addEventListener("change", () => loadGoods());
+
+    categoryPanel.addEventListener("click", (event) => {
+      const button = event.target.closest(".cat");
+      if (!button) return;
+      state.category = button.dataset.category || "";
+      document.querySelectorAll(".cat").forEach((btn) => btn.classList.toggle("on", btn === button));
+      showListing(false);
+      loadGoods();
+    });
+
+    goodsEl.addEventListener("click", (event) => {
+      const link = event.target.closest("[data-good-id]");
+      if (!link) return;
+      event.preventDefault();
+      showDetail(link.dataset.goodId);
+    });
+
+    detailView.addEventListener("click", (event) => {
+      if (event.target.id === "backToList") showListing();
+    });
+
+    loadMoreBtn.addEventListener("click", () => {
+      if (!state.hasNext) return;
+      state.page += 1;
+      loadGoods({ reset: false });
+    });
+
+    window.addEventListener("popstate", () => {
+      const match = location.pathname.match(/^\/goods\/(\d+)$/);
+      if (match) showDetail(match[1], false);
+      else showListing(false);
+    });
+
+    loadCategories()
+      .then(() => loadGoods())
+      .then(() => {
+        if (initialDetailId) showDetail(initialDetailId, false);
+      })
+      .catch((error) => {
+        goodsEl.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+      });
   </script>
 </body>
 </html>

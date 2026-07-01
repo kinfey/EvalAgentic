@@ -15,7 +15,7 @@ from copilot.session_events import AssistantMessageData, SessionIdleData
 LARGE_OPUS = "claude-opus-4.8"
 LARGE_GPT = "gpt-5.5"
 MID = "gpt-5.4-mini"
-TINY = "gpt-5-mini"
+TINY = "mai-code-1-flash-picker"
 
 _client: CopilotClient | None = None
 _lock = asyncio.Lock()

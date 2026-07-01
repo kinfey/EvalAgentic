@@ -1,21 +1,21 @@
-# 商品列表 Flask Demo
+# TaoLite Goods Listing Flask Demo
 
-## 运行
+## Run
 
-先安装依赖，确保默认运行命令具备 Flask：
+Install dependencies first and make sure Flask is available in the environment:
 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -r requirements.txt
-PORT=8081 python app.py
+PORT=8082 python app.py
 ```
 
-打开 `http://localhost:8081` 查看页面。
+Open `http://localhost:8082` in your browser.
 
-## Docker 运行
+## Run with Docker
 
 ```bash
 docker build -t products-flask-demo .
-docker run --rm -p 8081:8081 products-flask-demo
+docker run --rm -p 8082:8082 products-flask-demo
 ```

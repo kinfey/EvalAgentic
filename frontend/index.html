@@ -1,22 +1,20 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>EvalAgentic · Token 评估</title>
+<title>EvalAgentic · Token Evaluation</title>
 <style>
   :root{--bg:#f4f6fa;--card:#fff;--ink:#0d1117;--mut:#5b6472;--g:#3fb984;--o:#ef7d3b;--y:#f0c44a;--r:#e8504e;}
   *{box-sizing:border-box}body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
   header{padding:24px 32px;background:#0d1117;color:#fff}h1{margin:0;font-size:24px}.sub{color:#9aa4b2;font-size:14px;margin-top:6px}
+  .lang{margin-top:10px;display:flex;gap:8px}.lang button{border:1px solid #4a5568;background:transparent;color:#fff;padding:4px 10px;border-radius:999px;cursor:pointer}.lang button.on{background:#334155}
   main{max-width:1180px;margin:0 auto;padding:24px}
   .tabs{display:flex;gap:8px;margin-bottom:18px}.tab{padding:10px 18px;border-radius:8px;background:#e3e8ef;cursor:pointer;font-weight:600}.tab.on{background:#0d1117;color:#fff}
-  .ctl{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px;align-items:end}
-  .ctl label{font-size:12px;color:var(--mut);display:block;margin-bottom:6px}
-  .ctl select,.ctl input{width:100%;border:1px solid #d6dbe2;border-radius:8px;padding:8px;background:#fff}
   .card{background:var(--card);border-radius:12px;padding:18px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
   textarea{width:100%;min-height:120px;border:1px solid #d6dbe2;border-radius:8px;padding:10px;font-size:13px;font-family:inherit}
   input{width:100%;border:1px solid #d6dbe2;border-radius:8px;padding:8px}
-  button{background:var(--o);color:#fff;border:0;padding:10px 22px;border-radius:8px;font-weight:700;cursor:pointer}button:disabled{opacity:.5}
+  button.run{background:var(--o);color:#fff;border:0;padding:10px 22px;border-radius:8px;font-weight:700;cursor:pointer}button.run:disabled{opacity:.5}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   .b{border-left:6px solid var(--r)}.a{border-left:6px solid var(--g)}
   .lab{font-size:12px;letter-spacing:1px;color:var(--mut);font-weight:700}
@@ -32,109 +30,120 @@
 </style>
 </head>
 <body>
-<header><h1>EvalAgentic · Token 评估对比</h1><div class="sub">Claude Opus 4.8 / GPT-5.5 · 相同场景 处理前 vs 处理后</div><div class="sub">压缩抽取: GPT-5 mini · 摘要判断: Claude Opus 4.8 · 路由大模型: GPT-5.5</div></header>
+<header>
+  <h1 id="hdrTitle"></h1>
+  <div class="sub" id="hdrSub1"></div>
+  <div class="sub" id="hdrSub2"></div>
+  <div class="lang">
+    <button id="langEn" class="on">EN</button>
+    <button id="langZh">中文</button>
+  </div>
+</header>
 <main>
   <div class="tabs">
-    <div class="tab on" data-t="A">A 压缩对比</div>
-    <div class="tab" data-t="B">B 按需调用</div>
-    <div class="tab" data-t="C">C 编码场景(多 Agent)</div>
+    <div class="tab on" data-t="A" id="tabA"></div>
+    <div class="tab" data-t="B" id="tabB"></div>
+    <div class="tab" data-t="C" id="tabC"></div>
   </div>
 
-  <div class="card">
-    <div class="small">计价方式(按 GitHub Copilot 模型价目表): 统一按各模型「每 1M tokens 消耗的 Credits」计费 · 1 credit = $0.01 · 输入/输出分别计价</div>
-  </div>
+  <div class="card"><div class="small" id="pricingNote"></div></div>
 
   <section id="A">
     <div class="card">
-      <label class="small">原始长文本</label>
-      <textarea id="text">张三于 2018 年 9 月就读于清华大学计算机科学与技术系，主修人工智能方向，期间获得国家奖学金，参与了 ACM 比赛并获得亚洲区铜牌，担任学生会技术部部长，组织过多次黑客松活动，毕业论文方向为大模型推理优化，导师评价其工程能力突出。</textarea>
-      <input id="task" value="用一句话总结此人核心资历。" />
-      <p><button id="runA">运行对比</button></p>
+      <label class="small" id="rawLabel"></label>
+      <textarea id="text">Zhang San enrolled in the Department of Computer Science and Technology at Tsinghua University in September 2018, majored in artificial intelligence, won the National Scholarship, received ACM Asia regional bronze, served as student tech department lead, organized multiple hackathons, and focused his thesis on large-model inference optimization.</textarea>
+      <input id="task" value="Summarize this person's core qualifications in one sentence." />
+      <p><button class="run" id="runA"></button></p>
     </div>
     <div class="grid">
-      <div class="card b"><div class="lab">BEFORE 原始注入</div><div class="big" id="bA">–</div><div class="small">判断模型: Claude Opus 4.8</div><pre id="bAns"></pre></div>
-      <div class="card a"><div class="lab">AFTER 压缩注入</div><div class="big" id="aA">–</div><div class="small">抽取: GPT-5 mini · 判断: Claude Opus 4.8</div><pre id="aJson"></pre><pre id="aAns"></pre></div>
+      <div class="card b"><div class="lab" id="labBeforeA"></div><div class="big" id="bA">–</div><div class="small" id="judgeModelA"></div><pre id="bAns"></pre></div>
+      <div class="card a"><div class="lab" id="labAfterA"></div><div class="big" id="aA">–</div><div class="small" id="extractModelA"></div><pre id="aJson"></pre><pre id="aAns"></pre></div>
     </div>
-    <div class="card save" id="saveA">节省: – </div>
+    <div class="card save" id="saveA"></div>
   </section>
 
   <section id="B" class="hide">
-    <div class="card"><p class="small">同一批请求: 全部走 LARGE vs 路由树按需分配</p><button id="runB">运行对比</button></div>
-    <div class="card"><table id="tblB"><thead><tr><th>请求</th><th>Token区间</th><th>Token数</th><th>BEFORE</th><th>AFTER</th><th>场景</th><th>原因</th></tr></thead><tbody></tbody></table></div>
+    <div class="card"><p class="small" id="descB"></p><button class="run" id="runB"></button></div>
+    <div class="card"><table id="tblB"><thead><tr><th id="thReq"></th><th id="thBucket"></th><th id="thTok"></th><th>BEFORE</th><th>AFTER</th><th id="thScenario"></th><th id="thReason"></th></tr></thead><tbody></tbody></table></div>
     <div class="grid">
-      <div class="card b"><div class="lab">BEFORE 全 LARGE</div><div class="big" id="bB">–</div><div class="small">全部 GPT-5.5 (LARGE)</div></div>
-      <div class="card a"><div class="lab">AFTER 按需路由</div><div class="big" id="aB">–</div><div class="small">TINY=GPT-5 mini · MID=GPT-5.4 mini · LARGE=GPT-5.5</div></div>
+      <div class="card b"><div class="lab" id="labBeforeB"></div><div class="big" id="bB">–</div><div class="small" id="allLarge"></div></div>
+      <div class="card a"><div class="lab" id="labAfterB"></div><div class="big" id="aB">–</div><div class="small" id="tiersB"></div></div>
     </div>
-    <div class="card save" id="saveB">节省: –</div>
+    <div class="card save" id="saveB"></div>
   </section>
 
   <section id="C" class="hide">
     <div class="card">
-      <p class="small">基于 <b>GPT-5.5</b> + Agent Framework · 多 Agent(需求分析→编程→测试→部署) · 相同场景 压缩对比 + 按需调用</p>
-      <textarea id="req">用 Python 做一个类似淘宝的网站, 只需要货物列表, 前端用 HTML+JS, 后端用 Flask, 最后部署到 Docker 上。</textarea>
-      <p class="small">BEFORE 处理前: 不压缩 + 全 GPT-5.5 → 部署 8081 · AFTER 处理后: 压缩注入 + 按需路由 → 部署 8082</p>
-      <button id="runC">运行多 Agent 流水线对比</button> <span class="small" id="cStatus"></span>
+      <p class="small" id="descC"></p>
+      <textarea id="req">Build a Taobao-like goods listing website with Python. Use HTML+JS for frontend, Flask for backend, and deploy with Docker.</textarea>
+      <p class="small" id="beforeAfterC"></p>
+      <button class="run" id="runC"></button> <span class="small" id="cStatus"></span>
     </div>
-    <div class="card"><b>执行过程(逐 Agent 实时步骤)</b><pre id="cLog" class="log">点击运行后, 每个 Agent 的执行步骤会实时显示在这里…</pre></div>
-    <div class="card"><b>需求压缩(AFTER 动态注入的 JSON 规格)</b><pre id="cSpec"></pre></div>
-    <div class="card"><table id="tblC"><thead><tr><th>Agent</th><th>BEFORE 模型</th><th>BEFORE tok / $</th><th>AFTER 模型</th><th>AFTER tok / $</th><th>省 $</th><th>自愈</th></tr></thead><tbody></tbody></table></div>
+    <div class="card"><b id="logTitle"></b><pre id="cLog" class="log"></pre></div>
+    <div class="card"><b id="specTitle"></b><pre id="cSpec"></pre></div>
+    <div class="card"><table id="tblC"><thead><tr><th id="thAgent"></th><th id="thBeforeModel"></th><th id="thBeforeCost"></th><th id="thAfterModel"></th><th id="thAfterCost"></th><th id="thSave"></th><th id="thHeal"></th></tr></thead><tbody></tbody></table></div>
     <div class="grid">
-      <div class="card b"><div class="lab">BEFORE 全 LARGE 合计</div><div class="big" id="cBt">–</div><div class="small" id="cBc"></div></div>
-      <div class="card a"><div class="lab">AFTER 压缩+路由 合计</div><div class="big" id="cAt">–</div><div class="small" id="cAc"></div></div>
+      <div class="card b"><div class="lab" id="labBeforeC"></div><div class="big" id="cBt">–</div><div class="small" id="cBc"></div></div>
+      <div class="card a"><div class="lab" id="labAfterC"></div><div class="big" id="cAt">–</div><div class="small" id="cAc"></div></div>
     </div>
-    <div class="card save" id="saveC">整体节省: –</div>
-    <div class="card"><b>部署(Docker)</b><div class="small" id="cDeploy"></div></div>
+    <div class="card save" id="saveC"></div>
+    <div class="card"><b id="deployTitle"></b><div class="small" id="cDeploy"></div></div>
   </section>
 </main>
 <script>
 const $=s=>document.querySelector(s);
+const i18n={
+  en:{
+    hdrTitle:"EvalAgentic · Token Evaluation Comparison",
+    hdrSub1:"Claude Opus 4.8 / GPT-5.5 · Same scenario: before vs after",
+    hdrSub2:"Compression extraction: MAI-Code-1-Flash · Summarization: Claude Opus 4.8 · Routed large model: GPT-5.5",
+    tabA:"A Compression Comparison",tabB:"B On-demand Routing",tabC:"C Coding Scenario (Multi-agent)",
+    pricingNote:"Pricing (GitHub Copilot model table): each model is billed by credits per 1M tokens · 1 credit = $0.01 · input/output billed separately",
+    rawLabel:"Raw long-form text",runA:"Run Comparison",labBeforeA:"BEFORE Raw Injection",judgeModelA:"Judge model: Claude Opus 4.8",labAfterA:"AFTER Compressed Injection",extractModelA:"Extractor: MAI-Code-1-Flash · Judge: Claude Opus 4.8",saveA:"Savings: –",
+    descB:"Same request set: all LARGE vs routing tree assignment",runB:"Run Comparison",thReq:"Request",thBucket:"Token Range",thTok:"Tokens",thScenario:"Scenario",thReason:"Reason",labBeforeB:"BEFORE All LARGE",allLarge:"All GPT-5.5 (LARGE)",labAfterB:"AFTER On-demand Routing",tiersB:"TINY=MAI-Code-1-Flash · MID=GPT-5.4 mini · LARGE=GPT-5.5",saveB:"Savings: –",
+    descC:"Built with GPT-5.5 + Agent Framework · Multi-agent flow (Requirements → Coding → Testing → Deployment) · Same scenario compression + routing comparison",beforeAfterC:"BEFORE: no compression + all GPT-5.5 → deploy 8081 · AFTER: compressed injection + on-demand routing → deploy 8082",runC:"Run Multi-agent Pipeline Comparison",logTitle:"Execution Log (live per-agent steps)",logPlaceholder:"Click Run and live execution steps from each agent will appear here...",specTitle:"Compressed Requirement (AFTER injected JSON spec)",thAgent:"Agent",thBeforeModel:"BEFORE Model",thBeforeCost:"BEFORE tok / $",thAfterModel:"AFTER Model",thAfterCost:"AFTER tok / $",thSave:"Saved $",thHeal:"Self-heal",labBeforeC:"BEFORE All LARGE Total",labAfterC:"AFTER Compression+Routing Total",saveC:"Overall savings: –",deployTitle:"Deployment (Docker)",
+    running:"Running...",runningAgents:"Running multi-agent pipeline...",done:"Done",error:"Error",fixMark:"Fix",
+    tokenSaved:(n)=>`Saved ${n} tok`,tokenMore:(n)=>`Token +${n} (smaller model returned longer output)`,
+    sampleShort:"Classify this review as positive or negative: fast delivery and excellent packaging.",
+    sampleLongParagraph:"This section extends context while keeping consistent semantics. It includes background, constraints, edge cases, examples, counterexamples, execution requirements, risks, alternatives, trade-offs, and validation strategy.",
+    sampleLongReqPrefix:"Read the following requirement and provide a complete solution:",sampleLongReqSuffix:"Finally output a detailed execution plan and key caveats.",
+    cModeBefore:(p)=>`══ BEFORE (all GPT-5.5, deploy ${p}) ══`,cModeAfter:(p)=>`══ AFTER (compressed + routed, deploy ${p}) ══`,cleanupContainers:"containers",cleanupCode:"old code",cleanupLabel:(phase,msg)=>`Cleanup (${phase}): ${msg}`,
+    stepStart:(e)=>`▶ [${e.mode==='before'?'BEFORE':'AFTER'}] ${e.agent} start · model ${e.model} (${e.tier})`,
+    stepGenerated:(e)=>`  └ generated · ${e.tokens} tok · ${(e.latency_ms/1000).toFixed(1)}s`,stepReviewing:()=>"  └ reviewing...",stepHealing:(e)=>`  └ issue found, self-healing: ${e.review}`,stepRetry:(e)=>`  ⟳ retry #${e.attempt} (wait ${e.wait}s) · ${e.error}`,stepDone:(e)=>`  ✔ ${e.agent} done · ${e.total_tokens} tok · $${e.cost_usd} · ${e.healed?'healed':'no fix needed'}`
+  },
+  zh:{
+    hdrTitle:"EvalAgentic · Token 评估对比",hdrSub1:"Claude Opus 4.8 / GPT-5.5 · 相同场景：处理前 vs 处理后",hdrSub2:"压缩抽取：MAI-Code-1-Flash · 摘要判断：Claude Opus 4.8 · 路由大模型：GPT-5.5",
+    tabA:"A 压缩对比",tabB:"B 按需调用",tabC:"C 编码场景（多 Agent）",
+    pricingNote:"计价方式（GitHub Copilot 模型价目表）：统一按各模型每 1M tokens 的 credits 计费 · 1 credit = $0.01 · 输入/输出分别计价",
+    rawLabel:"原始长文本",runA:"运行对比",labBeforeA:"BEFORE 原始注入",judgeModelA:"判断模型：Claude Opus 4.8",labAfterA:"AFTER 压缩注入",extractModelA:"抽取：MAI-Code-1-Flash · 判断：Claude Opus 4.8",saveA:"节省：–",
+    descB:"同一批请求：全部走 LARGE vs 路由树按需分配",runB:"运行对比",thReq:"请求",thBucket:"Token 区间",thTok:"Token 数",thScenario:"场景",thReason:"原因",labBeforeB:"BEFORE 全 LARGE",allLarge:"全部 GPT-5.5（LARGE）",labAfterB:"AFTER 按需路由",tiersB:"TINY=MAI-Code-1-Flash · MID=GPT-5.4 mini · LARGE=GPT-5.5",saveB:"节省：–",
+    descC:"基于 GPT-5.5 + Agent Framework · 多 Agent 流程（需求→编码→测试→部署）· 相同场景压缩+路由对比",beforeAfterC:"BEFORE：不压缩 + 全 GPT-5.5 → 部署 8081 · AFTER：压缩注入 + 按需路由 → 部署 8082",runC:"运行多 Agent 流水线对比",logTitle:"执行过程（逐 Agent 实时步骤）",logPlaceholder:"点击运行后，每个 Agent 的执行步骤会实时显示在这里...",specTitle:"需求压缩（AFTER 动态注入的 JSON 规格）",thAgent:"Agent",thBeforeModel:"BEFORE 模型",thBeforeCost:"BEFORE tok / $",thAfterModel:"AFTER 模型",thAfterCost:"AFTER tok / $",thSave:"省 $",thHeal:"自愈",labBeforeC:"BEFORE 全 LARGE 合计",labAfterC:"AFTER 压缩+路由 合计",saveC:"整体节省：–",deployTitle:"部署（Docker）",
+    running:"运行中...",runningAgents:"多 Agent 运行中...",done:"完成",error:"出错",fixMark:"修复",
+    tokenSaved:(n)=>`节省 ${n} tok`,tokenMore:(n)=>`token +${n}（小模型输出更详细）`,
+    sampleShort:"把这条评论分类为正面或负面：物流很快，包装完好。",
+    sampleLongParagraph:"这段文字用于拉长上下文并保持语义一致，包含背景、约束、边界条件、示例、反例、执行要求、风险、替代方案、权衡依据与验证方法。",
+    sampleLongReqPrefix:"请阅读以下需求并给出完整方案：",sampleLongReqSuffix:"最后请输出详细执行计划与注意事项。",
+    cModeBefore:(p)=>`══ BEFORE 处理前（全 GPT-5.5，部署 ${p}）══`,cModeAfter:(p)=>`══ AFTER 处理后（压缩+按需路由，部署 ${p}）══`,cleanupContainers:"容器",cleanupCode:"旧代码",cleanupLabel:(phase,msg)=>`清理（${phase}）：${msg}`,
+    stepStart:(e)=>`▶ [${e.mode==='before'?'BEFORE':'AFTER'}] ${e.agent} 启动 · 模型 ${e.model} (${e.tier})`,stepGenerated:(e)=>`  └ 生成完成 · ${e.tokens} tok · ${(e.latency_ms/1000).toFixed(1)}s`,stepReviewing:()=>"  └ 审查中...",stepHealing:(e)=>`  └ 发现问题，自我修复：${e.review}`,stepRetry:(e)=>`  ⟳ 第${e.attempt}次重试（等待 ${e.wait}s）· ${e.error}`,stepDone:(e)=>`  ✔ ${e.agent} 完成 · ${e.total_tokens} tok · $${e.cost_usd} · ${e.healed?'已修复':'无需修复'}`
+  }
+};
+let lang='en';
+const tr=(k,...args)=>{const v=i18n[lang][k];return typeof v==='function'?v(...args):v;};
+function setLang(next){
+  lang=next;document.documentElement.lang=next==='en'?'en':'zh-Hans';
+  $('#langEn').classList.toggle('on',next==='en');$('#langZh').classList.toggle('on',next==='zh');
+  ['hdrTitle','hdrSub1','hdrSub2','tabA','tabB','tabC','pricingNote','rawLabel','runA','labBeforeA','judgeModelA','labAfterA','extractModelA','descB','runB','thReq','thBucket','thTok','thScenario','thReason','labBeforeB','allLarge','labAfterB','tiersB','descC','beforeAfterC','runC','logTitle','specTitle','thAgent','thBeforeModel','thBeforeCost','thAfterModel','thAfterCost','thSave','thHeal','labBeforeC','labAfterC','deployTitle'].forEach(id=>{$('#'+id).textContent=tr(id);});
+  $('#saveA').textContent=tr('saveA');$('#saveB').textContent=tr('saveB');$('#saveC').textContent=tr('saveC');
+  if(!$('#cLog').textContent.trim())$('#cLog').textContent=tr('logPlaceholder');
+}
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));t.classList.add('on');A.classList.toggle('hide',t.dataset.t!=='A');B.classList.toggle('hide',t.dataset.t!=='B');C.classList.toggle('hide',t.dataset.t!=='C');});
-$('#runA').onclick=async()=>{$('#runA').disabled=true;$('#saveA').textContent='运行中…';
- const r=await fetch('/api/compression',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:$('#text').value,task:$('#task').value})}).then(r=>r.json());
- $('#bA').textContent=r.before.prompt_tokens+' tok';$('#bAns').textContent=r.before.answer;
- $('#aA').textContent=r.after.prompt_tokens+' tok';$('#aJson').textContent=r.after.compact;$('#aAns').textContent=r.after.answer;
- $('#saveA').textContent=`节省 ${r.saved_tokens} tokens (${r.saved_pct}%) · 输入侧约省 $${r.saved_cost} · 总成本省 $${r.cost.saved_usd} (${r.cost.saved_credits} credits)`;$('#runA').disabled=false;};
-$('#runB').onclick=async()=>{$('#runB').disabled=true;$('#saveB').textContent='运行中…';
- const shortReq="把这条评论分类为正面/负面：物流很快，包装完好";
- const longParagraph="这是一段用于拉长上下文并保持语义一致的补充说明，包含背景、约束、边界条件、示例与反例，要求模型综合考虑表达风格、结构完整性、可执行性、潜在风险、替代方案、权衡依据以及结果验证方法，最后以可操作步骤输出。";
- const longReq=`请你阅读以下需求并给出完整方案：\n${Array(80).fill(longParagraph).join('\n')}\n最后请输出详细执行计划与注意事项。`;
- const ps=[shortReq,longReq];
- const r=await fetch('/api/routing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompts:ps})}).then(r=>r.json());
- $('#tblB tbody').innerHTML=r.rows.map(x=>{const tk=x.route.tokens||0;const bucket=tk>500?'> 500':'< 500';
-  return `<tr><td>${x.prompt}</td><td>${bucket}</td><td>${tk}</td><td><span class="pill LARGE">GPT-5.5</span></td><td><span class="pill ${x.after_tier}">${x.route.model}</span></td><td>${x.route.scenario}</td><td>${x.route.reason}</td></tr>`;}).join('');
- $('#bB').textContent='$'+r.before.total_cost_usd;$('#aB').textContent='$'+r.after.total_cost_usd;
- $('#saveB').textContent=`使用成本节省 $${r.cost.saved_usd} (${r.cost.saved_credits} credits)`;$('#runB').disabled=false;};
-$('#runC').onclick=async()=>{$('#runC').disabled=true;$('#cStatus').textContent='多 Agent 运行中…';
- const log=$('#cLog');log.innerHTML='';
- const ph={start:['be af',(e)=>`▶ [${e.mode==='before'?'BEFORE':'AFTER '}] ${e.agent} 启动 · 模型 ${e.model} (${e.tier})`],
-  generated:['dn',(e)=>`  └ 生成完成 · ${e.tokens} tok · ${(e.latency_ms/1000).toFixed(1)}s`],
-  reviewing:['hl',(e)=>`  └ 审查中…`],
-  healing:['hl',(e)=>`  └ 发现问题，自我修复: ${e.review}`],
-  retry:['hl',(e)=>`  ⟳ 第${e.attempt}次重试(等 ${e.wait}s) · ${e.error}`],
-  done:['dn',(e)=>`  ✔ ${e.agent} 完成 · ${e.total_tokens} tok · $${e.cost_usd} · ${e.healed?'已自愈':'未需修复'}`]};
- const add=(cls,txt)=>{const d=document.createElement('div');d.className=cls;d.textContent=txt;log.appendChild(d);log.scrollTop=log.scrollHeight;};
- const resp=await fetch('/api/coding/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requirement:$('#req').value})});
- const reader=resp.body.getReader();const dec=new TextDecoder();let buf='';
- while(true){const {value,done}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});
-  let i;while((i=buf.indexOf('\n\n'))>=0){const line=buf.slice(0,i).trim();buf=buf.slice(i+2);
-   if(!line.startsWith('data:'))continue;const e=JSON.parse(line.slice(5).trim());
-   if(e.type==='mode'){add('be af',`══ ${e.mode==='before'?'BEFORE 处理前(全 GPT-5.5, 部署 '+e.port:'AFTER 处理后(压缩+按需路由, 部署 '+e.port})══`);}
-   else if(e.type==='cleanup'){add('hl',`🧹 清理(${e.phase==='containers'?'容器':'旧代码'}): ${e.message}`);}
-   else if(e.type==='spec'){if(e.mode==='after')$('#cSpec').textContent=e.spec;}
-   else if(e.type==='step'){const p=ph[e.phase];if(p)add(p[0],p[1](e));}
-   else if(e.type==='error'){add('be',`✗ 错误: ${e.message}`);$('#cStatus').textContent='出错';}
-   else if(e.type==='result'){renderC(e.data);$('#cStatus').textContent='完成';}
-  }}
- $('#runC').disabled=false;};
-function renderC(r){$('#cSpec').textContent=r.after.spec;
- const rows=r.before.agents.map((b,i)=>{const a=r.after.agents[i];const sv=+(b.cost_usd-a.cost_usd).toFixed(6);
-  return `<tr><td>${b.role}</td><td><span class="pill LARGE">${b.model}</span></td><td>${b.total_tokens} / $${b.cost_usd}</td><td><span class="pill ${a.tier}">${a.model}</span></td><td>${a.total_tokens} / $${a.cost_usd}</td><td>${sv>=0?'$'+sv:'-$'+Math.abs(sv)}</td><td>${a.healed?'✓ 修复':'OK'}</td></tr>`;}).join('');
- $('#tblC tbody').innerHTML=rows;
- $('#cBt').textContent='$'+r.before.total_cost;$('#cBc').textContent=r.before.total_tokens+' tok · 自愈 '+r.before.healed_count;
- $('#cAt').textContent='$'+r.after.total_cost;$('#cAc').textContent=r.after.total_tokens+' tok · 自愈 '+r.after.healed_count;
- const tokTxt=r.saved_tokens>=0?`节省 ${r.saved_tokens} tok`:`token +${Math.abs(r.saved_tokens)}(小模型输出更详)`;
- $('#saveC').textContent=`整体省钱 $${r.saved_cost} (${r.saved_cost_pct}%) · ${tokTxt} · 折合省 ${r.cost.saved_credits} credits`;
- $('#cDeploy').innerHTML=`BEFORE → <a href="${r.deploy.before_url}" target="_blank">${r.deploy.before_url}</a> · AFTER → <a href="${r.deploy.after_url}" target="_blank">${r.deploy.after_url}</a><br>一键部署: <code>${r.deploy.cmd}</code> (生成 ${r.deploy.compose})`;}
+$('#langEn').onclick=()=>setLang('en');$('#langZh').onclick=()=>setLang('zh');
+$('#runA').onclick=async()=>{ $('#runA').disabled=true;$('#saveA').textContent=tr('running'); const r=await fetch('/api/compression',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:$('#text').value,task:$('#task').value})}).then(r=>r.json()); $('#bA').textContent=r.before.prompt_tokens+' tok';$('#bAns').textContent=r.before.answer;$('#aA').textContent=r.after.prompt_tokens+' tok';$('#aJson').textContent=r.after.compact;$('#aAns').textContent=r.after.answer; $('#saveA').textContent=lang==='en'?`Saved ${r.saved_tokens} tokens (${r.saved_pct}%) · input-side savings about $${r.saved_cost} · total cost savings $${r.cost.saved_usd} (${r.cost.saved_credits} credits)`:`节省 ${r.saved_tokens} tokens (${r.saved_pct}%) · 输入侧约省 $${r.saved_cost} · 总成本省 $${r.cost.saved_usd} (${r.cost.saved_credits} credits)`;$('#runA').disabled=false; };
+$('#runB').onclick=async()=>{ $('#runB').disabled=true;$('#saveB').textContent=tr('running'); const shortReq=tr('sampleShort'); const longParagraph=tr('sampleLongParagraph'); const longReq=`${tr('sampleLongReqPrefix')}\n${Array(80).fill(longParagraph).join('\n')}\n${tr('sampleLongReqSuffix')}`; const r=await fetch('/api/routing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompts:[shortReq,longReq]})}).then(r=>r.json()); $('#tblB tbody').innerHTML=r.rows.map(x=>{const tk=x.route.tokens||0;const bucket=tk>500?'> 500':'< 500';return `<tr><td>${x.prompt}</td><td>${bucket}</td><td>${tk}</td><td><span class="pill LARGE">GPT-5.5</span></td><td><span class="pill ${x.after_tier}">${x.route.model}</span></td><td>${x.route.scenario}</td><td>${x.route.reason}</td></tr>`;}).join(''); $('#bB').textContent='$'+r.before.total_cost_usd;$('#aB').textContent='$'+r.after.total_cost_usd; $('#saveB').textContent=lang==='en'?`Cost savings $${r.cost.saved_usd} (${r.cost.saved_credits} credits)`:`使用成本节省 $${r.cost.saved_usd} (${r.cost.saved_credits} credits)`;$('#runB').disabled=false; };
+$('#runC').onclick=async()=>{ $('#runC').disabled=true;$('#cStatus').textContent=tr('runningAgents'); const log=$('#cLog');log.innerHTML=''; const add=(cls,txt)=>{const d=document.createElement('div');d.className=cls;d.textContent=txt;log.appendChild(d);log.scrollTop=log.scrollHeight;}; const resp=await fetch('/api/coding/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requirement:$('#req').value})}); const reader=resp.body.getReader();const dec=new TextDecoder();let buf=''; while(true){const {value,done}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true}); let i;while((i=buf.indexOf('\n\n'))>=0){const line=buf.slice(0,i).trim();buf=buf.slice(i+2);if(!line.startsWith('data:'))continue;const e=JSON.parse(line.slice(5).trim()); if(e.type==='mode'){add('be af',e.mode==='before'?tr('cModeBefore',e.port):tr('cModeAfter',e.port));} else if(e.type==='cleanup'){const phase=e.phase==='containers'?tr('cleanupContainers'):tr('cleanupCode');add('hl',tr('cleanupLabel',phase,e.message));} else if(e.type==='spec'){if(e.mode==='after')$('#cSpec').textContent=e.spec;} else if(e.type==='step'){ if(e.phase==='start')add('be af',tr('stepStart',e)); else if(e.phase==='generated')add('dn',tr('stepGenerated',e)); else if(e.phase==='reviewing')add('hl',tr('stepReviewing')); else if(e.phase==='healing')add('hl',tr('stepHealing',e)); else if(e.phase==='retry')add('hl',tr('stepRetry',e)); else if(e.phase==='done')add('dn',tr('stepDone',e)); } else if(e.type==='error'){add('be',`✗ ${tr('error')}: ${e.message}`);$('#cStatus').textContent=tr('error');} else if(e.type==='result'){renderC(e.data);$('#cStatus').textContent=tr('done');} }} $('#runC').disabled=false; };
+function renderC(r){$('#cSpec').textContent=r.after.spec; $('#tblC tbody').innerHTML=r.before.agents.map((b,i)=>{const a=r.after.agents[i];const sv=+(b.cost_usd-a.cost_usd).toFixed(6);return `<tr><td>${b.role}</td><td><span class="pill LARGE">${b.model}</span></td><td>${b.total_tokens} / $${b.cost_usd}</td><td><span class="pill ${a.tier}">${a.model}</span></td><td>${a.total_tokens} / $${a.cost_usd}</td><td>${sv>=0?'$'+sv:'-$'+Math.abs(sv)}</td><td>${a.healed?'✓ '+tr('fixMark'):'OK'}</td></tr>`;}).join(''); $('#cBt').textContent='$'+r.before.total_cost;$('#cBc').textContent=`${r.before.total_tokens} tok · ${lang==='en'?'healed':'自愈'} ${r.before.healed_count}`; $('#cAt').textContent='$'+r.after.total_cost;$('#cAc').textContent=`${r.after.total_tokens} tok · ${lang==='en'?'healed':'自愈'} ${r.after.healed_count}`; const tokTxt=r.saved_tokens>=0?tr('tokenSaved',r.saved_tokens):tr('tokenMore',Math.abs(r.saved_tokens)); $('#saveC').textContent=lang==='en'?`Overall cost savings $${r.saved_cost} (${r.saved_cost_pct}%) · ${tokTxt} · equals ${r.cost.saved_credits} credits saved`:`整体省钱 $${r.saved_cost} (${r.saved_cost_pct}%) · ${tokTxt} · 折合省 ${r.cost.saved_credits} credits`; $('#cDeploy').innerHTML=`BEFORE → <a href="${r.deploy.before_url}" target="_blank">${r.deploy.before_url}</a> · AFTER → <a href="${r.deploy.after_url}" target="_blank">${r.deploy.after_url}</a><br>${lang==='en'?'One-click deploy':'一键部署'}: <code>${r.deploy.cmd}</code> (${lang==='en'?'generated':'生成'} ${r.deploy.compose})`; }
+setLang('en');
+$('#cLog').textContent=tr('logPlaceholder');
 </script>
 </body>
 </html>
