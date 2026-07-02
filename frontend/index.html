@@ -44,6 +44,7 @@
     <div class="tab on" data-t="A" id="tabA"></div>
     <div class="tab" data-t="B" id="tabB"></div>
     <div class="tab" data-t="C" id="tabC"></div>
+    <div class="tab" data-t="D" id="tabD"></div>
   </div>
 
   <div class="card"><div class="small" id="pricingNote"></div></div>
@@ -74,6 +75,27 @@
 
   <section id="C" class="hide">
     <div class="card">
+      <p class="small" id="descCache"></p>
+      <p class="small" id="cacheHow"></p>
+      <pre id="cacheScenario"></pre>
+      <button class="run" id="runCache"></button> <span class="small" id="cacheStatus"></span>
+    </div>
+    <div class="card"><b id="cacheTblTitle"></b>
+      <table id="tblCache"><thead><tr><th id="thCacheModel"></th><th id="thCacheBefore"></th><th id="thCacheAfter"></th><th id="thCacheSaveTok"></th><th id="thCacheSaveCr"></th><th id="thCacheSavePct"></th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="grid">
+      <div class="card b"><div class="lab" id="cacheBeforeLab"></div><div class="big" id="cacheBeforeBig">–</div><div class="small" id="cacheBeforeMeta"></div></div>
+      <div class="card a"><div class="lab" id="cacheAfterLab"></div><div class="big" id="cacheAfterBig">–</div><div class="small" id="cacheAfterMeta"></div></div>
+    </div>
+    <div class="card save" id="saveCache"></div>
+    <div class="card"><b id="dedupTitle"></b>
+      <table id="tblDedup"><thead><tr><th id="thTurn"></th><th id="thTurnReq"></th><th id="thTurnTools"></th><th id="thTurnLoaded"></th><th id="thTurnDeferred"></th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="card"><b id="liveTitle"></b><pre id="cacheLive"></pre></div>
+  </section>
+
+  <section id="D" class="hide">
+    <div class="card">
       <p class="small" id="descC"></p>
       <textarea id="req">Build a Taobao-like goods listing website with Python. Use HTML+JS for frontend, Flask for backend, and deploy with Docker.</textarea>
       <p class="small" id="beforeAfterC"></p>
@@ -97,11 +119,21 @@ const i18n={
     hdrTitle:"EvalAgentic · Token Evaluation Comparison",
     hdrSub1:"Claude Opus 4.8 / GPT-5.5 · Same scenario: before vs after",
     hdrSub2:"Compression extraction: MAI-Code-1-Flash · Summarization: Claude Opus 4.8 · Routed large model: GPT-5.5",
-    tabA:"A Compression Comparison",tabB:"B On-demand Routing",tabC:"C Coding Scenario (Multi-agent)",
+    tabA:"A Compression Comparison",tabB:"B On-demand Routing",tabC:"C Prompt Caching / Dedup",tabD:"D Coding Scenario (Multi-agent)",
     pricingNote:"Pricing (GitHub Copilot model table): each model is billed by credits per 1M tokens · 1 credit = $0.01 · input/output billed separately",
     rawLabel:"Raw long-form text",runA:"Run Comparison",labBeforeA:"BEFORE Raw Injection",judgeModelA:"Judge model: Claude Opus 4.8",labAfterA:"AFTER Compressed Injection",extractModelA:"Extractor: MAI-Code-1-Flash · Judge: Claude Opus 4.8",saveA:"Savings: –",
     descB:"Same request set: all LARGE vs routing tree assignment",runB:"Run Comparison",thReq:"Request",thBucket:"Token Range",thTok:"Tokens",thScenario:"Scenario",thReason:"Reason",labBeforeB:"BEFORE All LARGE",allLarge:"All GPT-5.5 (LARGE)",labAfterB:"AFTER On-demand Routing",tiersB:"TINY=MAI-Code-1-Flash · MID=GPT-5.4 mini · LARGE=GPT-5.5",saveB:"Savings: –",
     descC:"Built with GPT-5.5 + Agent Framework · Multi-agent flow (Requirements → Coding → Testing → Deployment) · Same scenario compression + routing comparison",beforeAfterC:"BEFORE: no compression + all GPT-5.5 → deploy 8081 · AFTER: compressed injection + on-demand routing → deploy 8082",runC:"Run Multi-agent Pipeline Comparison",logTitle:"Execution Log (live per-agent steps)",logPlaceholder:"Click Run and live execution steps from each agent will appear here...",specTitle:"Compressed Requirement (AFTER injected JSON spec)",thAgent:"Agent",thBeforeModel:"BEFORE Model",thBeforeCost:"BEFORE tok / $",thAfterModel:"AFTER Model",thAfterCost:"AFTER tok / $",thSave:"Saved $",thHeal:"Self-heal",labBeforeC:"BEFORE All LARGE Total",labAfterC:"AFTER Compression+Routing Total",saveC:"Overall savings: –",deployTitle:"Deployment (Docker)",
+    descCache:"Agentic coding session on the same repo, run turn by turn. Compare BEFORE (no caching, every tool definition sent each turn) vs AFTER (stable prompt prefix cached + tool definitions deduplicated). Same run compared for GPT-5.5 and Claude Opus 4.8.",
+    cacheHow:"Method (VS Code token-efficiency blog): 1) Prompt prefix caching — system + repo context + deferred tool metadata are billed at the cached-input rate (up to 10× cheaper) after turn 1. 2) Deduplication via tool search — MAI-Code-1-Flash selects only the tools each turn needs; unused tool schemas stay deferred.",
+    runCache:"Run Caching + Dedup Comparison",cacheTblTitle:"Per-model credit comparison (input-side)",
+    thCacheModel:"Target Model",thCacheBefore:"BEFORE credits",thCacheAfter:"AFTER credits",thCacheSaveTok:"Saved tool tok",thCacheSaveCr:"Saved credits",thCacheSavePct:"Saved %",
+    cacheBeforeLab:"BEFORE No Caching + All Tools",cacheAfterLab:"AFTER Prefix Cache + Dedup",
+    dedupTitle:"Deduplication per turn (MAI-Code-1-Flash tool search)",thTurn:"Turn",thTurnReq:"Request",thTurnTools:"Selected tools",thTurnLoaded:"Loaded tool tok",thTurnDeferred:"Deferred tool tok",
+    liveTitle:"Live SDK answers (final turn, per model)",
+    cacheSaved:(cr,usd)=>`Total credits saved ${cr} (≈ $${usd}) across GPT-5.5 + Claude Opus 4.8`,
+    cacheBeforeMeta:(cr,tk)=>`${cr} credits · ${tk} tool tok/turn`,cacheAfterMeta:(cr,tk)=>`${cr} credits · ${tk} tool tok saved`,
+    runningCache:"Running caching + dedup comparison...",
     running:"Running...",runningAgents:"Running multi-agent pipeline...",done:"Done",error:"Error",fixMark:"Fix",
     tokenSaved:(n)=>`Saved ${n} tok`,tokenMore:(n)=>`Token +${n} (smaller model returned longer output)`,
     sampleShort:"Classify this review as positive or negative: fast delivery and excellent packaging.",
@@ -113,11 +145,21 @@ const i18n={
   },
   zh:{
     hdrTitle:"EvalAgentic · Token 评估对比",hdrSub1:"Claude Opus 4.8 / GPT-5.5 · 相同场景：处理前 vs 处理后",hdrSub2:"压缩抽取：MAI-Code-1-Flash · 摘要判断：Claude Opus 4.8 · 路由大模型：GPT-5.5",
-    tabA:"A 压缩对比",tabB:"B 按需调用",tabC:"C 编码场景（多 Agent）",
+    tabA:"A 压缩对比",tabB:"B 按需调用",tabC:"C 提示缓存 / 去重",tabD:"D 编码场景（多 Agent）",
     pricingNote:"计价方式（GitHub Copilot 模型价目表）：统一按各模型每 1M tokens 的 credits 计费 · 1 credit = $0.01 · 输入/输出分别计价",
     rawLabel:"原始长文本",runA:"运行对比",labBeforeA:"BEFORE 原始注入",judgeModelA:"判断模型：Claude Opus 4.8",labAfterA:"AFTER 压缩注入",extractModelA:"抽取：MAI-Code-1-Flash · 判断：Claude Opus 4.8",saveA:"节省：–",
     descB:"同一批请求：全部走 LARGE vs 路由树按需分配",runB:"运行对比",thReq:"请求",thBucket:"Token 区间",thTok:"Token 数",thScenario:"场景",thReason:"原因",labBeforeB:"BEFORE 全 LARGE",allLarge:"全部 GPT-5.5（LARGE）",labAfterB:"AFTER 按需路由",tiersB:"TINY=MAI-Code-1-Flash · MID=GPT-5.4 mini · LARGE=GPT-5.5",saveB:"节省：–",
     descC:"基于 GPT-5.5 + Agent Framework · 多 Agent 流程（需求→编码→测试→部署）· 相同场景压缩+路由对比",beforeAfterC:"BEFORE：不压缩 + 全 GPT-5.5 → 部署 8081 · AFTER：压缩注入 + 按需路由 → 部署 8082",runC:"运行多 Agent 流水线对比",logTitle:"执行过程（逐 Agent 实时步骤）",logPlaceholder:"点击运行后，每个 Agent 的执行步骤会实时显示在这里...",specTitle:"需求压缩（AFTER 动态注入的 JSON 规格）",thAgent:"Agent",thBeforeModel:"BEFORE 模型",thBeforeCost:"BEFORE tok / $",thAfterModel:"AFTER 模型",thAfterCost:"AFTER tok / $",thSave:"省 $",thHeal:"自愈",labBeforeC:"BEFORE 全 LARGE 合计",labAfterC:"AFTER 压缩+路由 合计",saveC:"整体节省：–",deployTitle:"部署（Docker）",
+    descCache:"在同一个代码库上的 Agentic 编码会话，按轮次执行。对比 BEFORE（不缓存，每轮都发送全部工具定义）与 AFTER（稳定提示前缀缓存 + 工具定义去重）。同一次运行分别对比 GPT-5.5 与 Claude Opus 4.8。",
+    cacheHow:"方法（VS Code Token 效率博客）：1) 提示前缀缓存 — 系统提示 + 代码库上下文 + 延迟加载的工具元数据在第 1 轮后按缓存输入价计费（最多便宜 10 倍）。2) 去重（工具搜索）— 由 MAI-Code-1-Flash 每轮只挑选真正需要的工具，未用到的工具 schema 保持延迟加载。",
+    runCache:"运行 缓存+去重 对比",cacheTblTitle:"各模型 credit 对比（输入侧）",
+    thCacheModel:"目标模型",thCacheBefore:"BEFORE credits",thCacheAfter:"AFTER credits",thCacheSaveTok:"省工具 tok",thCacheSaveCr:"省 credits",thCacheSavePct:"节省 %",
+    cacheBeforeLab:"BEFORE 不缓存 + 全量工具",cacheAfterLab:"AFTER 前缀缓存 + 去重",
+    dedupTitle:"每轮去重（MAI-Code-1-Flash 工具搜索）",thTurn:"轮次",thTurnReq:"请求",thTurnTools:"选中的工具",thTurnLoaded:"加载工具 tok",thTurnDeferred:"延迟工具 tok",
+    liveTitle:"实时 SDK 回答（最后一轮，按模型）",
+    cacheSaved:(cr,usd)=>`GPT-5.5 + Claude Opus 4.8 合计节省 ${cr} credits（≈ $${usd}）`,
+    cacheBeforeMeta:(cr,tk)=>`${cr} credits · 每轮 ${tk} 工具 tok`,cacheAfterMeta:(cr,tk)=>`${cr} credits · 省 ${tk} 工具 tok`,
+    runningCache:"缓存 + 去重 对比运行中...",
     running:"运行中...",runningAgents:"多 Agent 运行中...",done:"完成",error:"出错",fixMark:"修复",
     tokenSaved:(n)=>`节省 ${n} tok`,tokenMore:(n)=>`token +${n}（小模型输出更详细）`,
     sampleShort:"把这条评论分类为正面或负面：物流很快，包装完好。",
@@ -132,16 +174,30 @@ const tr=(k,...args)=>{const v=i18n[lang][k];return typeof v==='function'?v(...a
 function setLang(next){
   lang=next;document.documentElement.lang=next==='en'?'en':'zh-Hans';
   $('#langEn').classList.toggle('on',next==='en');$('#langZh').classList.toggle('on',next==='zh');
-  ['hdrTitle','hdrSub1','hdrSub2','tabA','tabB','tabC','pricingNote','rawLabel','runA','labBeforeA','judgeModelA','labAfterA','extractModelA','descB','runB','thReq','thBucket','thTok','thScenario','thReason','labBeforeB','allLarge','labAfterB','tiersB','descC','beforeAfterC','runC','logTitle','specTitle','thAgent','thBeforeModel','thBeforeCost','thAfterModel','thAfterCost','thSave','thHeal','labBeforeC','labAfterC','deployTitle'].forEach(id=>{$('#'+id).textContent=tr(id);});
-  $('#saveA').textContent=tr('saveA');$('#saveB').textContent=tr('saveB');$('#saveC').textContent=tr('saveC');
+  ['hdrTitle','hdrSub1','hdrSub2','tabA','tabB','tabC','tabD','pricingNote','rawLabel','runA','labBeforeA','judgeModelA','labAfterA','extractModelA','descB','runB','thReq','thBucket','thTok','thScenario','thReason','labBeforeB','allLarge','labAfterB','tiersB','descC','beforeAfterC','runC','logTitle','specTitle','thAgent','thBeforeModel','thBeforeCost','thAfterModel','thAfterCost','thSave','thHeal','labBeforeC','labAfterC','deployTitle','descCache','cacheHow','runCache','cacheTblTitle','thCacheModel','thCacheBefore','thCacheAfter','thCacheSaveTok','thCacheSaveCr','thCacheSavePct','cacheBeforeLab','cacheAfterLab','dedupTitle','thTurn','thTurnReq','thTurnTools','thTurnLoaded','thTurnDeferred','liveTitle'].forEach(id=>{$('#'+id).textContent=tr(id);});
+  $('#saveA').textContent=tr('saveA');$('#saveB').textContent=tr('saveB');$('#saveC').textContent=tr('saveC');$('#saveCache').textContent=$('#saveCache').textContent||'';
   if(!$('#cLog').textContent.trim())$('#cLog').textContent=tr('logPlaceholder');
 }
-document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));t.classList.add('on');A.classList.toggle('hide',t.dataset.t!=='A');B.classList.toggle('hide',t.dataset.t!=='B');C.classList.toggle('hide',t.dataset.t!=='C');});
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));t.classList.add('on');A.classList.toggle('hide',t.dataset.t!=='A');B.classList.toggle('hide',t.dataset.t!=='B');C.classList.toggle('hide',t.dataset.t!=='C');D.classList.toggle('hide',t.dataset.t!=='D');});
 $('#langEn').onclick=()=>setLang('en');$('#langZh').onclick=()=>setLang('zh');
 $('#runA').onclick=async()=>{ $('#runA').disabled=true;$('#saveA').textContent=tr('running'); const r=await fetch('/api/compression',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:$('#text').value,task:$('#task').value})}).then(r=>r.json()); $('#bA').textContent=r.before.prompt_tokens+' tok';$('#bAns').textContent=r.before.answer;$('#aA').textContent=r.after.prompt_tokens+' tok';$('#aJson').textContent=r.after.compact;$('#aAns').textContent=r.after.answer; $('#saveA').textContent=lang==='en'?`Saved ${r.saved_tokens} tokens (${r.saved_pct}%) · input-side savings about $${r.saved_cost} · total cost savings $${r.cost.saved_usd} (${r.cost.saved_credits} credits)`:`节省 ${r.saved_tokens} tokens (${r.saved_pct}%) · 输入侧约省 $${r.saved_cost} · 总成本省 $${r.cost.saved_usd} (${r.cost.saved_credits} credits)`;$('#runA').disabled=false; };
 $('#runB').onclick=async()=>{ $('#runB').disabled=true;$('#saveB').textContent=tr('running'); const shortReq=tr('sampleShort'); const longParagraph=tr('sampleLongParagraph'); const longReq=`${tr('sampleLongReqPrefix')}\n${Array(80).fill(longParagraph).join('\n')}\n${tr('sampleLongReqSuffix')}`; const r=await fetch('/api/routing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompts:[shortReq,longReq]})}).then(r=>r.json()); $('#tblB tbody').innerHTML=r.rows.map(x=>{const tk=x.route.tokens||0;const bucket=tk>500?'> 500':'< 500';return `<tr><td>${x.prompt}</td><td>${bucket}</td><td>${tk}</td><td><span class="pill LARGE">GPT-5.5</span></td><td><span class="pill ${x.after_tier}">${x.route.model}</span></td><td>${x.route.scenario}</td><td>${x.route.reason}</td></tr>`;}).join(''); $('#bB').textContent='$'+r.before.total_cost_usd;$('#aB').textContent='$'+r.after.total_cost_usd; $('#saveB').textContent=lang==='en'?`Cost savings $${r.cost.saved_usd} (${r.cost.saved_credits} credits)`:`使用成本节省 $${r.cost.saved_usd} (${r.cost.saved_credits} credits)`;$('#runB').disabled=false; };
 $('#runC').onclick=async()=>{ $('#runC').disabled=true;$('#cStatus').textContent=tr('runningAgents'); const log=$('#cLog');log.innerHTML=''; const add=(cls,txt)=>{const d=document.createElement('div');d.className=cls;d.textContent=txt;log.appendChild(d);log.scrollTop=log.scrollHeight;}; const resp=await fetch('/api/coding/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requirement:$('#req').value})}); const reader=resp.body.getReader();const dec=new TextDecoder();let buf=''; while(true){const {value,done}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true}); let i;while((i=buf.indexOf('\n\n'))>=0){const line=buf.slice(0,i).trim();buf=buf.slice(i+2);if(!line.startsWith('data:'))continue;const e=JSON.parse(line.slice(5).trim()); if(e.type==='mode'){add('be af',e.mode==='before'?tr('cModeBefore',e.port):tr('cModeAfter',e.port));} else if(e.type==='cleanup'){const phase=e.phase==='containers'?tr('cleanupContainers'):tr('cleanupCode');add('hl',tr('cleanupLabel',phase,e.message));} else if(e.type==='spec'){if(e.mode==='after')$('#cSpec').textContent=e.spec;} else if(e.type==='step'){ if(e.phase==='start')add('be af',tr('stepStart',e)); else if(e.phase==='generated')add('dn',tr('stepGenerated',e)); else if(e.phase==='reviewing')add('hl',tr('stepReviewing')); else if(e.phase==='healing')add('hl',tr('stepHealing',e)); else if(e.phase==='retry')add('hl',tr('stepRetry',e)); else if(e.phase==='done')add('dn',tr('stepDone',e)); } else if(e.type==='error'){add('be',`✗ ${tr('error')}: ${e.message}`);$('#cStatus').textContent=tr('error');} else if(e.type==='result'){renderC(e.data);$('#cStatus').textContent=tr('done');} }} $('#runC').disabled=false; };
 function renderC(r){$('#cSpec').textContent=r.after.spec; $('#tblC tbody').innerHTML=r.before.agents.map((b,i)=>{const a=r.after.agents[i];const sv=+(b.cost_usd-a.cost_usd).toFixed(6);return `<tr><td>${b.role}</td><td><span class="pill LARGE">${b.model}</span></td><td>${b.total_tokens} / $${b.cost_usd}</td><td><span class="pill ${a.tier}">${a.model}</span></td><td>${a.total_tokens} / $${a.cost_usd}</td><td>${sv>=0?'$'+sv:'-$'+Math.abs(sv)}</td><td>${a.healed?'✓ '+tr('fixMark'):'OK'}</td></tr>`;}).join(''); $('#cBt').textContent='$'+r.before.total_cost;$('#cBc').textContent=`${r.before.total_tokens} tok · ${lang==='en'?'healed':'自愈'} ${r.before.healed_count}`; $('#cAt').textContent='$'+r.after.total_cost;$('#cAc').textContent=`${r.after.total_tokens} tok · ${lang==='en'?'healed':'自愈'} ${r.after.healed_count}`; const tokTxt=r.saved_tokens>=0?tr('tokenSaved',r.saved_tokens):tr('tokenMore',Math.abs(r.saved_tokens)); $('#saveC').textContent=lang==='en'?`Overall cost savings $${r.saved_cost} (${r.saved_cost_pct}%) · ${tokTxt} · equals ${r.cost.saved_credits} credits saved`:`整体省钱 $${r.saved_cost} (${r.saved_cost_pct}%) · ${tokTxt} · 折合省 ${r.cost.saved_credits} credits`; $('#cDeploy').innerHTML=`BEFORE → <a href="${r.deploy.before_url}" target="_blank">${r.deploy.before_url}</a> · AFTER → <a href="${r.deploy.after_url}" target="_blank">${r.deploy.after_url}</a><br>${lang==='en'?'One-click deploy':'一键部署'}: <code>${r.deploy.cmd}</code> (${lang==='en'?'generated':'生成'} ${r.deploy.compose})`; }
+$('#runCache').onclick=async()=>{ $('#runCache').disabled=true;$('#cacheStatus').textContent=tr('runningCache'); try{ const r=await fetch('/api/caching',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})}).then(r=>r.json()); renderCache(r);$('#cacheStatus').textContent=tr('done'); }catch(ex){ $('#cacheStatus').textContent=tr('error')+': '+ex; } $('#runCache').disabled=false; };
+function renderCache(r){
+  const tierOf=m=>m&&m.indexOf('opus')>=0?'LARGE':'LARGE';
+  $('#tblCache tbody').innerHTML=r.models.map(m=>`<tr><td><span class="pill LARGE">${m.label}</span></td><td>${m.before.credits}</td><td>${m.after.credits}</td><td>${r.dedup.saved_tokens}</td><td><b>${m.saved.credits}</b></td><td>${m.saved.pct}%</td></tr>`).join('');
+  const gpt=r.models.find(m=>m.provider==='openai')||r.models[0];
+  $('#cacheBeforeBig').textContent=r.totals.before_credits+' cr';
+  $('#cacheBeforeMeta').textContent=tr('cacheBeforeMeta',r.totals.before_credits,r.dedup.before_tool_tokens);
+  $('#cacheAfterBig').textContent=r.totals.after_credits+' cr';
+  $('#cacheAfterMeta').textContent=tr('cacheAfterMeta',r.totals.after_credits,r.dedup.saved_tokens);
+  $('#saveCache').textContent=tr('cacheSaved',r.totals.saved_credits,r.totals.saved_usd);
+  $('#cacheScenario').textContent=`prefix ${r.session.prefix_tokens} tok \u00b7 ${r.session.tool_count} tools \u00b7 all-tools ${r.session.all_tools_full_tokens} tok/turn \u00b7 ${r.session.turns} turns \u00b7 dedup engine ${r.dedup.engine_label} (${r.dedup.saved_pct}% tool tok saved)`;
+  $('#tblDedup tbody').innerHTML=r.session.turn_details.map(t=>`<tr><td>${t.turn}</td><td>${t.user}</td><td>${(t.selected_tools||[]).map(x=>`<span class="pill TINY">${x}</span>`).join(' ')}</td><td>${t.loaded_tool_tokens}</td><td>${t.deferred_tool_tokens}</td></tr>`).join('');
+  $('#cacheLive').textContent=r.models.map(m=>`[${m.label}] (${(m.latency_ms/1000).toFixed(1)}s)\n${m.answer}`).join('\n\n');
+}
 setLang('en');
 $('#cLog').textContent=tr('logPlaceholder');
 </script>

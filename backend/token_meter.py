@@ -25,6 +25,13 @@ _CL100K_HASH = "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7
 # 1 GitHub Copilot AI credit = $0.01 USD.
 AI_CREDIT_USD = 0.01
 
+# Prompt-cache pricing multipliers (see the VS Code token-efficiency blog).
+# Reading a cached prefix is "up to 10x cheaper" than uncached input.
+CACHE_READ_MULTIPLIER = 0.1
+# Anthropic charges a one-time write premium to place a cache breakpoint;
+# OpenAI models cache the prefix automatically with no write premium.
+ANTHROPIC_CACHE_WRITE_MULTIPLIER = 1.25
+
 # GitHub Copilot model pricing — Credits per 1M tokens (from the Copilot models table).
 # Single unified rate per model; no individual/enterprise distinction.
 MODEL_CREDITS_PER_1M = {
@@ -58,6 +65,10 @@ def normalize_model_name(model: str) -> str:
     return (model or "").strip().lower()
 
 
+def is_anthropic_model(model: str) -> bool:
+    return normalize_model_name(model).startswith("claude")
+
+
 def credits_to_usd(credits: float) -> float:
     return credits * AI_CREDIT_USD
 
@@ -85,6 +96,11 @@ def estimate_cost_usd(prompt_tok: int, completion_tok: int, model: str, tier: st
 def estimate_input_cost_usd(prompt_tok: int, model: str, tier: str) -> float:
     c = get_model_credits_per_1m(model, tier)
     return credits_to_usd(prompt_tok / 1_000_000 * c["input"])
+
+
+def estimate_input_cost_credits(prompt_tok: int, model: str, tier: str) -> float:
+    c = get_model_credits_per_1m(model, tier)
+    return prompt_tok / 1_000_000 * c["input"]
 
 
 def cost_summary(cost_usd: float) -> dict:

@@ -30,16 +30,18 @@ USD (`credits × $0.01`). The full model rate table lives in
 
 ```mermaid
 flowchart TD
-    UI["Frontend (index.html)<br/>Tab A / B / C"] -->|HTTP / SSE| API["FastAPI (server.py)"]
+    UI["Frontend (index.html)<br/>Tab A / B / C / D"] -->|HTTP / SSE| API["FastAPI (server.py)"]
 
     API --> EVAL["eval.py<br/>A: compression · B: routing"]
-    API --> CODE["coding_agents.py<br/>C: 4-agent pipeline"]
+    API --> CACHE["caching.py<br/>C: prompt caching + dedup"]
+    API --> CODE["coding_agents.py<br/>D: 4-agent pipeline"]
 
     EVAL --> COMP["compressor.py<br/>extract JSON + 24h cache"]
     EVAL --> ROUTE["router.py<br/>on-demand routing tree"]
 
     COMP --> GHM["gh_models.py<br/>Copilot SDK wrapper"]
     ROUTE --> GHM
+    CACHE --> GHM
 
     CODE --> AF["GitHubCopilotAgent<br/>(Agent Framework)"]
     AF --> A1["Requirements"]
@@ -60,9 +62,9 @@ flowchart TD
 
 | Layer | Component | Responsibility |
 |-------|-----------|----------------|
-| UI | `frontend/index.html` | Tabs A/B/C, live SSE log, before/after charts |
+| UI | `frontend/index.html` | Tabs A/B/C/D, live SSE log, before/after charts |
 | API | `backend/server.py` | FastAPI routes + SSE streaming |
-| Orchestration | `eval.py`, `coding_agents.py` | A/B eval · C multi-agent pipeline |
+| Orchestration | `eval.py`, `caching.py`, `coding_agents.py` | A/B eval · C caching+dedup · D multi-agent pipeline |
 | Core | `compressor.py`, `router.py`, `gh_models.py`, `token_meter.py` | extraction+cache · routing · SDK calls · metering |
 | Providers | GitHub Copilot SDK · Agent Framework | model access (LARGE/MID/TINY) |
 
@@ -70,7 +72,7 @@ flowchart TD
 
 ## What it shows
 
-The web UI has three tabs, each a **before/after comparison on the same scenario**:
+The web UI has four tabs, each a **before/after comparison on the same scenario**:
 
 ### A. Compression comparison
 Long-tail natural-language text (résumés, product manuals, contracts) is:
@@ -99,7 +101,24 @@ INCOMING REQUEST
                                                                                                                                                          └─ YES ─→ LARGE (agent · code)
 ```
 
-### C. Coding scenario — multi-agent (Agent Framework)
+### C. Prompt caching & deduplication (token efficiency)
+An agentic coding session over the same repo is replayed turn by turn, applying the two
+ideas from the VS Code blog [*Improving token efficiency for GitHub Copilot*](https://code.visualstudio.com/blogs/2026/06/17/improving-token-efficiency-in-github-copilot):
+
+1. **Prompt prefix caching** — the stable prefix (system prompt + repo context + deferred
+   tool metadata) is billed at the cached-input rate (up to **10× cheaper**) on every turn
+   after the first, instead of full price each time. Anthropic models pay a small one-time
+   cache-write premium; OpenAI models cache the prefix automatically.
+2. **Deduplication via tool search** — instead of loading every tool's full JSON schema on
+   every turn, **MAI-Code-1-Flash** (`backend/caching.py`) selects only the tools each turn
+   needs; unused tool schemas stay deferred as lightweight name+description metadata.
+
+The same session is priced for **GPT-5.5** and **Claude Opus 4.8** side by side, showing the
+per-model token and credit savings (BEFORE = no caching + all tool defs every turn; AFTER =
+cached prefix + deduplicated tools). One live SDK answer per target model is produced on the
+final turn to prove the flow end-to-end.
+
+### D. Coding scenario — multi-agent (Agent Framework)
 The same deliverable (a Taobao-like **goods-list site**: HTML + JS frontend, Flask
 backend, Dockerized) is produced twice by a 4-agent pipeline:
 
@@ -116,7 +135,7 @@ Each agent is **token-metered**, runs a **review + self-heal** step, and streams
 execution steps live to the page via Server-Sent Events. A final overall comparison
 plus a Docker deploy panel are shown.
 
-> The headline metric for scenario C is **cost** (not raw token count): on-demand
+> The headline metric for scenario D is **cost** (not raw token count): on-demand
 > routing can lower cost ~30% even when token count rises, because cheaper tiers cost
 > 30× less.
 
@@ -152,12 +171,13 @@ EvalAgentic/
 │   ├── compressor.py     # structured extraction → JSON + 24h cache
 │   ├── router.py         # on-demand routing tree
 │   ├── eval.py           # A/B orchestration (compression / routing)
-│   ├── coding_agents.py  # scenario C: 4-agent pipeline (Agent Framework)
+│   ├── caching.py        # scenario C: prompt caching + tool-search dedup
+│   ├── coding_agents.py  # scenario D: 4-agent pipeline (Agent Framework)
 │   ├── server.py         # FastAPI server + SSE streaming endpoint
 │   └── requirements.txt
 ├── frontend/
-│   └── index.html        # single-page UI (Tabs A / B / C)
-├── generated/            # scenario C output: before/ after/ + docker-compose + deploy.sh
+│   └── index.html        # single-page UI (Tabs A / B / C / D)
+├── generated/            # scenario D output: before/ after/ + docker-compose + deploy.sh
 └── imgs/                 # reference diagrams (routing tree, token counter)
 ```
 
@@ -178,7 +198,7 @@ cd backend
 uvicorn server:app --port 8077
 ```
 
-Open <http://localhost:8077> and try Tabs A / B / C.
+Open <http://localhost:8077> and try Tabs A / B / C / D.
 
 > If a Copilot call fails with `Authorization error, you may need to run /login`,
 > authenticate the Copilot CLI first (run `copilot` then `/login`, or `gh auth login`).
@@ -192,14 +212,15 @@ Open <http://localhost:8077> and try Tabs A / B / C.
 |--------|-----------------------|-------------|
 | POST   | `/api/compression`    | Scenario A — compression before/after |
 | POST   | `/api/routing`        | Scenario B — routing before/after |
-| POST   | `/api/coding`         | Scenario C — full multi-agent run (JSON result) |
-| POST   | `/api/coding/stream`  | Scenario C — SSE stream of per-agent steps |
+| POST   | `/api/caching`        | Scenario C — prompt caching + dedup (GPT-5.5 vs Claude Opus 4.8) |
+| POST   | `/api/coding`         | Scenario D — full multi-agent run (JSON result) |
+| POST   | `/api/coding/stream`  | Scenario D — SSE stream of per-agent steps |
 
 ---
 
-## Deploy the generated sites (scenario C)
+## Deploy the generated sites (scenario D)
 
-After running Tab C, two deployable projects exist under `generated/`:
+After running Tab D, two deployable projects exist under `generated/`:
 
 ```bash
 cd generated && ./deploy.sh

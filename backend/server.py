@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 import eval as evalmod
 import coding_agents
+import caching
 import gh_models
 
 FRONTEND = os.path.join(os.path.dirname(__file__), "..", "frontend")
@@ -42,6 +43,11 @@ async def compression(r: CompressReq):
 @app.post("/api/routing")
 async def routing(r: RouteReq):
     return await evalmod.eval_routing(r.prompts, r.model)
+
+
+@app.post("/api/caching")
+async def caching_eval():
+    return await caching.eval_caching()
 
 
 @app.post("/api/coding")
